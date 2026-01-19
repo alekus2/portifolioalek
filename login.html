@@ -8,12 +8,12 @@
   <style>
     :root{--bg:#06132a;--accent:#0b6fb6;--muted:#9fb6d0}
     *{box-sizing:border-box}
-    body{margin:0;height:100vh;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,var(--bg) 0%, #07132a 70%);display:flex;align-items:center;justify-content:center;color:#e6eef8}
-    .card{width:420px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:28px;border-radius:14px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 12px 40px rgba(0,0,0,0.6)}
+    body{margin:0;min-height:100vh;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,var(--bg) 0%, #07132a 70%);display:flex;align-items:center;justify-content:center;color:#e6eef8;padding:24px}
+    .card{width:420px;background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));padding:28px;border-radius:14px;border:1px solid rgba(255,255,255,0.04);box-shadow:0 18px 60px rgba(2,6,23,0.6)}
     h2{margin:0 0 14px;font-size:22px}
     .tabs{display:flex;gap:8px;margin-bottom:16px}
-    .tab{flex:1;padding:8px 10px;border-radius:8px;text-align:center;cursor:pointer;font-weight:600;user-select:none;background:transparent}
-    .tab.active{background:rgba(255,255,255,0.03)}
+    .tab{flex:1;padding:8px 10px;border-radius:8px;text-align:center;cursor:pointer;font-weight:600;user-select:none;background:transparent;color:#dff3ff}
+    .tab.active{background:linear-gradient(90deg,#083b67,#0b5d93);box-shadow:0 6px 18px rgba(3,10,30,0.6)}
     label{display:block;font-size:13px;color:var(--muted);margin-top:8px}
     input{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit;margin-top:6px}
     .btn{margin-top:14px;width:100%;padding:10px;border-radius:10px;border:none;background:linear-gradient(90deg,#1fb6ff,#3b82f6);color:#061226;font-weight:700;cursor:pointer}
@@ -32,6 +32,7 @@
       <div id="tabSignup" class="tab" role="tab" tabindex="0">Criar conta</div>
     </div>
 
+    <!-- LOGIN -->
     <form id="loginForm" autocomplete="on" novalidate>
       <label for="loginEmail">E-mail</label>
       <input id="loginEmail" type="email" required>
@@ -42,6 +43,7 @@
       <div class="small">Ou <span id="openSignup" class="link">crie sua conta</span></div>
     </form>
 
+    <!-- SIGNUP -->
     <form id="signupForm" style="display:none" autocomplete="on" novalidate>
       <label for="signupNome">Nome completo</label>
       <input id="signupNome" type="text" required>
@@ -58,7 +60,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const SUPABASE_URL = 'https://xqsuvwagygwkkugjqgpu.supabase.co';
@@ -101,6 +102,12 @@
 
       openSignup.addEventListener('click', (e) => { e.preventDefault(); showSignup(); });
       openLogin.addEventListener('click', (e) => { e.preventDefault(); showLogin(); });
+
+      // Se a URL tem #signup (ou ?tab=signup), abre a aba de cadastro automaticamente
+      const params = new URLSearchParams(location.search);
+      if (location.hash === '#signup' || params.get('tab') === 'signup') {
+        showSignup();
+      }
 
       // LOGIN handler
       loginForm.addEventListener('submit', async (e) => {

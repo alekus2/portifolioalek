@@ -34,19 +34,10 @@
     .card-prod{background:#fff;padding:12px;border-radius:10px;color:#111}
     .card-prod img{width:100%;height:160px;object-fit:cover;border-radius:8px}
     footer{padding:18px 20px;color:var(--muted);background:transparent;border-top:1px solid rgba(255,255,255,0.03)}
-    .modal-overlay{position:fixed;inset:0;background:rgba(2,6,23,0.6);display:none;align-items:center;justify-content:center;z-index:3000;padding:20px}
-    .modal{width:420px;max-width:96vw;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:24px;border-radius:14px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 20px 60px rgba(0,0,0,0.6);color:#e6eef8}
-    .tabs{display:flex;gap:8px;margin-bottom:12px}
-    .tab{flex:1;padding:8px 10px;border-radius:8px;text-align:center;cursor:pointer;font-weight:600;user-select:none;background:transparent}
-    .tab.active{background:rgba(255,255,255,0.03)}
-    label{display:block;font-size:13px;color:var(--muted);margin-top:8px}
-    input[type="email"], input[type="password"], input[type="text"], input[type="date"]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit;margin-top:6px}
-    .btn{margin-top:14px;width:100%;padding:10px;border-radius:10px;border:none;background:var(--btn-bg);color:#061226;font-weight:700;cursor:pointer}
-    .small{font-size:13px;color:var(--muted);margin-top:10px;text-align:center}
-    .link{color:#7dd3fc;cursor:pointer;text-decoration:underline}
-    .errors{color:#ffb4b4;margin-top:8px;font-size:14px;display:none}
     @media(max-width:980px){ .hero{grid-template-columns:1fr} .grid{grid-template-columns:repeat(2,1fr)} header.topbar{grid-template-columns:1fr 1fr} .search{display:none} }
     @media(max-width:640px){ .grid{grid-template-columns:1fr} }
+    /* pequenos ajustes de link */
+    a.btn-link { color:#fff; font-weight:700; text-decoration:none; background:transparent; border:1px solid rgba(255,255,255,0.04); padding:8px 10px; border-radius:8px; }
   </style>
 </head>
 <body>
@@ -63,7 +54,7 @@
 
     <div class="auth" id="authArea">
       <div id="guestArea" style="display:flex;gap:10px;align-items:center">
-        <!-- ADDED type="button" -->
+        <!-- AGORA redirecionam para a página de login -->
         <button id="createBtn" type="button">Criar conta</button>
         <button id="loginBtn" type="button">Entrar</button>
       </div>
@@ -120,137 +111,32 @@
     © <span id="year"></span> Loja Exemplo — todos os direitos reservados
   </footer>
 
-  <div id="loginModal" class="modal-overlay" aria-hidden="true" role="dialog" aria-modal="true">
-    <div class="modal" role="document" aria-labelledby="modalTitle">
-      <h2 id="modalTitle" style="margin:0 0 8px;font-size:20px">Entrar na Loja Exemplo</h2>
-      <div class="tabs" role="tablist">
-        <div id="modalTabLogin" class="tab active" role="tab" tabindex="0">Entrar</div>
-        <div id="modalTabSignup" class="tab" role="tab" tabindex="0">Criar conta</div>
-      </div>
-
-      <form id="modalLoginForm" autocomplete="on" novalidate>
-        <label for="modalLoginEmail">E-mail</label>
-        <input id="modalLoginEmail" type="email" required>
-        <label for="modalLoginPassword">Senha</label>
-        <input id="modalLoginPassword" type="password" required>
-        <div id="modalLoginError" class="errors" role="alert"></div>
-        <button class="btn" type="submit" id="modalLoginSubmit">Entrar</button>
-        <div class="small">Ou <span id="modalOpenSignup" class="link">crie sua conta</span></div>
-      </form>
-
-      <form id="modalSignupForm" style="display:none" autocomplete="on" novalidate>
-        <label for="modalSignupNome">Nome completo</label>
-        <input id="modalSignupNome" type="text" required>
-        <label for="modalSignupNascimento">Data de nascimento</label>
-        <input id="modalSignupNascimento" type="date" required>
-        <label for="modalSignupEmail">E-mail</label>
-        <input id="modalSignupEmail" type="email" required>
-        <label for="modalSignupPassword">Senha (mín 6 caracteres)</label>
-        <input id="modalSignupPassword" type="password" minlength="6" required>
-        <div id="modalSignupError" class="errors" role="alert"></div>
-        <button class="btn" type="submit" id="modalSignupSubmit">Criar conta</button>
-        <div class="small">Já tem conta? <span id="modalOpenLogin" class="link">Entrar</span></div>
-      </form>
-    </div>
-  </div>
-
+  <!-- OBS: NÃO há mais abertura de modal aqui — os botões redirecionam para login.html -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      // Supabase config (mantive a sua)
+      // Supabase client (mantive sua configuração)
       const SUPABASE_URL = 'https://xqsuvwagygwkkugjqgpu.supabase.co';
       const SUPABASE_KEY = 'sb_publishable__lu67DW_OZJ_kbIw_aY3-Q_AI-DQvH1';
       if (!window.supabaseClient) window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       const supabase = window.supabaseClient;
 
-      // refs com fallback
-      const getByIdOrText = (id, fallbackText) => {
-        const el = document.getElementById(id);
-        if (el) return el;
-        // fallback procura botão pelo texto (sensível a idioma)
-        const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim().toLowerCase() === fallbackText.toLowerCase());
-        return btn || null;
-      };
+      // Elementos
+      const createBtn = document.getElementById('createBtn');
+      const loginBtn = document.getElementById('loginBtn');
 
-      const createBtn = getByIdOrText('createBtn', 'Criar conta');
-      const loginBtn = getByIdOrText('loginBtn', 'Entrar');
-      const loginModal = document.getElementById('loginModal');
-      const modalTabLogin = document.getElementById('modalTabLogin');
-      const modalTabSignup = document.getElementById('modalTabSignup');
-      const modalLoginForm = document.getElementById('modalLoginForm');
-      const modalSignupForm = document.getElementById('modalSignupForm');
-      const modalOpenSignup = document.getElementById('modalOpenSignup');
-      const modalOpenLogin = document.getElementById('modalOpenLogin');
+      // Ao invés de abrir modal, redireciona para login.html (com hash para signup)
+      createBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        // redireciona para a aba 'Criar conta'
+        window.location.href = 'login.html#signup';
+      });
+      loginBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.location.href = 'login.html';
+      });
 
-      function openModal(tab = 'login') {
-        console.log('openModal', tab);
-        loginModal.style.display = 'flex';
-        loginModal.setAttribute('aria-hidden','false');
-        if (tab === 'signup') showModalSignup(); else showModalLogin();
-        setTimeout(() => {
-          const first = document.querySelector('#loginModal input');
-          if (first) first.focus();
-        }, 100);
-        document.body.style.overflow = 'hidden';
-      }
-      function closeModal() {
-        loginModal.style.display = 'none';
-        loginModal.setAttribute('aria-hidden','true');
-        document.body.style.overflow = '';
-      }
-      function showModalLogin() {
-        modalTabLogin.classList.add('active');
-        modalTabSignup.classList.remove('active');
-        modalLoginForm.style.display = '';
-        modalSignupForm.style.display = 'none';
-        document.getElementById('modalLoginError').style.display = 'none';
-        document.getElementById('modalSignupError').style.display = 'none';
-      }
-      function showModalSignup() {
-        modalTabSignup.classList.add('active');
-        modalTabLogin.classList.remove('active');
-        modalLoginForm.style.display = 'none';
-        modalSignupForm.style.display = '';
-        document.getElementById('modalLoginError').style.display = 'none';
-        document.getElementById('modalSignupError').style.display = 'none';
-      }
-
-      // attach events defensively
-      if (createBtn) {
-        createBtn.addEventListener('click', (e) => { e.preventDefault(); console.log('createBtn click'); openModal('signup'); });
-      }
-      if (loginBtn) {
-        loginBtn.addEventListener('click', (e) => { e.preventDefault(); console.log('loginBtn click'); openModal('login'); });
-      }
-
-      modalTabLogin?.addEventListener('click', showModalLogin);
-      modalTabSignup?.addEventListener('click', showModalSignup);
-      modalOpenSignup?.addEventListener('click', (e) => { e.preventDefault(); showModalSignup(); });
-      modalOpenLogin?.addEventListener('click', (e) => { e.preventDefault(); showModalLogin(); });
-
-      // close modal when clicking outside
-      loginModal.addEventListener('click', (e) => { if (e.target === loginModal) closeModal(); });
-      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && loginModal.style.display === 'flex') closeModal(); });
-
-      // newsletter submit small helper
-      const newsletterForm = document.getElementById('newsletterForm');
-      if (newsletterForm) {
-        newsletterForm.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          const newsletterMsg = document.getElementById('newsletterMsg');
-          newsletterMsg.textContent = '';
-          const email = document.getElementById('newsletterEmail').value.trim();
-          if (!email) { newsletterMsg.textContent = 'Informe um email válido.'; return; }
-          try {
-            const { error } = await supabase.from('respostas').insert([{ nome: 'Newsletter', email }]);
-            if (error) { console.error(error); newsletterMsg.textContent = 'Erro ao salvar — veja console.'; }
-            else { newsletterMsg.textContent = 'Inscrição realizada com sucesso!'; e.target.reset(); }
-          } catch (err) { console.error(err); newsletterMsg.textContent = 'Erro inesperado.'; }
-        });
-      }
-
-      // minimal header auth interactions (keeps previous logic)
+      // Header / autenticação mínima (mantive a lógica para mostrar usuário quando logado)
       const guestArea = document.getElementById('guestArea');
       const userArea = document.getElementById('userArea');
       const profileBtn = document.getElementById('profileBtn');
@@ -275,7 +161,6 @@
 
       logoutBtnMenu?.addEventListener('click', async () => {
         await supabase.auth.signOut();
-        // reload to reflect changes
         window.location.reload();
       });
 
@@ -297,58 +182,25 @@
 
       supabase.auth.onAuthStateChange((_event, session) => {
         updateHeader();
-        if (session?.user && loginModal.style.display === 'flex') closeModal();
       });
 
-      // attach modal auth submissions (kept minimal: behavior as before)
-      modalLoginForm?.addEventListener('submit', async (e) => {
+      // newsletter
+      const newsletterForm = document.getElementById('newsletterForm');
+      newsletterForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const loginError = document.getElementById('modalLoginError');
-        loginError.style.display = 'none';
-        const email = document.getElementById('modalLoginEmail').value.trim();
-        const password = document.getElementById('modalLoginPassword').value;
-        const submit = document.getElementById('modalLoginSubmit');
-        submit.disabled = true; submit.textContent = 'Entrando...';
-        const { data, error } = await supabase.auth.signInWithPassword({email,password});
-        if (error) { loginError.textContent = error.message || 'Erro ao logar'; loginError.style.display = ''; submit.disabled = false; submit.textContent = 'Entrar'; return; }
-        if (data?.user) {
-          await supabase.from('profiles').upsert([{ id: data.user.id, last_active: new Date().toISOString() }], { onConflict: 'id' });
-          await updateHeader();
-          closeModal();
-        } else {
-          alert('Verifique seu e-mail para confirmar a conta.');
-          closeModal();
-        }
+        const newsletterMsg = document.getElementById('newsletterMsg');
+        newsletterMsg.textContent = '';
+        const email = document.getElementById('newsletterEmail').value.trim();
+        if (!email) { newsletterMsg.textContent = 'Informe um email válido.'; return; }
+        try {
+          const { error } = await supabase.from('respostas').insert([{ nome: 'Newsletter', email }]);
+          if (error) { console.error(error); newsletterMsg.textContent = 'Erro ao salvar — veja console.'; }
+          else { newsletterMsg.textContent = 'Inscrição realizada com sucesso!'; e.target.reset(); }
+        } catch (err) { console.error(err); newsletterMsg.textContent = 'Erro inesperado.'; }
       });
 
-      modalSignupForm?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const signupError = document.getElementById('modalSignupError');
-        signupError.style.display = 'none';
-        const nome = document.getElementById('modalSignupNome').value.trim();
-        const dataNascimento = document.getElementById('modalSignupNascimento').value;
-        const email = document.getElementById('modalSignupEmail').value.trim();
-        const password = document.getElementById('modalSignupPassword').value;
-        const submit = document.getElementById('modalSignupSubmit');
-        submit.disabled = true; submit.textContent = 'Criando...';
-        const { data: signData, error: signErr } = await supabase.auth.signUp({ email, password });
-        if (signErr) { signupError.textContent = signErr.message || 'Erro ao cadastrar'; signupError.style.display = ''; submit.disabled = false; submit.textContent = 'Criar conta'; return; }
-        const user = signData.user;
-        if (user) {
-          const { error: pErr } = await supabase.from('profiles').insert([{ id: user.id, nome, data_nascimento: dataNascimento, role: 'user', last_active: new Date().toISOString() }]);
-          if (pErr) { console.error(pErr); signupError.textContent = 'Erro ao criar perfil (veja console)'; signupError.style.display = ''; submit.disabled = false; submit.textContent = 'Criar conta'; return; }
-          await updateHeader();
-          closeModal();
-          return;
-        }
-        alert('Conta criada! Verifique seu e-mail para confirmar antes de entrar.');
-        closeModal();
-      });
-
-      // initial header update
       updateHeader();
       document.getElementById('year').textContent = new Date().getFullYear();
-      console.log('UI inicializado');
     });
   </script>
 </body>
