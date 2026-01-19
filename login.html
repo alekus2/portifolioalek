@@ -115,6 +115,14 @@
         if (password.length < 6) return 'Senha precisa ter ao menos 6 caracteres';
         return null;
       }
+      // helper para log detalhado de erros do Supabase
+      function logDbError(err, ctx) {
+        try {
+          console.error('DB ERROR:', ctx, JSON.stringify(err, null, 2));
+        } catch (e) {
+          console.error('DB ERROR:', ctx, err);
+        }
+      }
       function clearSignErrors() {
         [signupNomeError, signupNascimentoError, signupEmailError, signupPasswordError, signupError, signupSuccess].forEach(e => { e.style.display='none'; e.textContent=''; });
       }
@@ -143,18 +151,22 @@
                 role: 'user',
                 ...(pending ? { nome: pending.nome, data_nascimento: pending.data_nascimento } : {})
               };
-              await supabase
+              const { data: upData, error: upErr } = await supabase
                 .from('profiles')
                 .upsert([upsertObj], { onConflict: 'id' });
+              if (upErr) {
+                logDbError(upErr, 'auth listener upsert profiles');
+              }
               if (pending) localStorage.removeItem(key);
             } catch (innerErr) {
               console.warn('Erro ao aplicar pending profile via auth listener:', innerErr);
             }
             // opcional: atualizar last_active
-            await supabase
+            const { error: updErr } = await supabase
               .from('profiles')
               .update({ last_active: new Date().toISOString() })
               .eq('id', user.id);
+            if (updErr) logDbError(updErr, 'auth listener update last_active');
             console.log('Profile garantido via auth listener para', user.id);
           }
         } catch (err) {
@@ -217,10 +229,13 @@
           // se conseguimos o user, upserta profile por id
           if (user) {
             try {
-              const { error: pErr } = await supabase
+              const { data: prData, error: pErr } = await supabase
                 .from('profiles')
                 .upsert([{ id: user.id, email, nome, data_nascimento: dataNascimento, role: 'user' }], { onConflict: 'id' });
-              if (pErr) throw pErr;
+              if (pErr) {
+                logDbError(pErr, 'signup upsert profiles');
+                throw pErr;
+              }
               signupSuccess.style.display='block';
               signupSuccess.textContent = 'Conta criada com sucesso! Redirecionando...';
               setTimeout(() => window.location.href = 'index.html', 900);
@@ -290,14 +305,15 @@
           }
 
           try {
-            await supabase
+            const { data: u1, error: e1 } = await supabase
               .from('profiles')
               .upsert([{ id: user.id, email: user.email, role: 'user' }], { onConflict: 'id' });
-
-            await supabase
+            if (e1) logDbError(e1, 'login upsert profiles');
+            const { error: e2 } = await supabase
               .from('profiles')
               .update({ last_active: new Date().toISOString() })
               .eq('id', user.id);
+            if (e2) logDbError(e2, 'login update last_active');
           } catch (pErr) {
             console.warn('Falha ao garantir/atualizar profile após login:', pErr);
           }
