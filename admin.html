@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin — Insights</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body{font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#071024 0%, #07132a 70%);color:#e6eef8;margin:0;padding:20px}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
+    .controls{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+    input[type="date"]{padding:8px;border-radius:6px;border:none}
+    .btn{background:linear-gradient(90deg,#06b6d4,#7c3aed);color:#061226;padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:8px;border:1px solid rgba(255,255,255,0.04);text-align:left;color:#e6eef8}
+  </style>
+</head>
+<body>
+
+  <h1>Insights — Admin</h1>
+  <div id="info" style="margin-bottom:12px" class="card">
+    <strong>Total usuários:</strong> <span id="totalUsers">—</span> &nbsp; | &nbsp;
+    <strong>Usuários online (15min):</strong> <span id="onlineUsers">—</span>
+    <button class="btn" id="logoutBtn" style="float:right">Logout</button>
+  </div>
+
+  <div class="card">
+    <div class="controls">
+      <label>Data nasc. início: <input id="start" type="date"></label>
+      <label>Data nasc. fim: <input id="end" type="date"></label>
+      <button class="btn" onclick="loadData()">Filtrar</button>
+      <button class="btn" onclick="clearFilters()">Limpar</button>
+    </div>
+
+    <table id="tbl">
+      <thead>
+        <tr><th>Nome</th><th>Data Nascimento</th><th>Data Cadastro</th><th>Última Atividade</th><th>Role</th></tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = 'https://xqsuvwagygwkkugjqgpu.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable__lu67DW_OZJ_kbIw_aY3-Q_AI-DQvH1';
+
+    if (!window.supabaseClient) {
+      window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
+    const supabase = window.supabaseClient;
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = '/';
+    });
+
+    async function ensureAdmin() {
+      const { data } = await supabase.auth.getUser();
+      const user = data.user;
+      if (!user) { alert('Faça login'); window.location.href = 'login.html'; return false; }
+
+      const { data: profile, error } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+      if (error || !profile) { alert('Perfil não encontrado'); window.location.href = '/'; return false; }
+      if (profile.role !== 'admin') { alert('Acesso negado'); window.location.href = '/'; return false; }
+      return true;
+    }
+
+    function escapeHtml(s){ return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
+
+    async function loadData() {
+      const start = document.getElementById('start').value;
+      const end = document.getElementById('end').value;
+
+      let q = supabase.from('profiles').select('nome,data_nascimento,created_at,last_active,role').order('created_at',{ascending:false});
+
+      if (start) q = q.gte('data_nascimento', start);
+      if (end) q = q.lte('data_nascimento', end);
+
+      const { data, error } = await q;
+      if (error) { console.error(error); alert('Erro ao carregar'); return; }
+
+      const tbody = document.getElementById('tbody');
+      tbody.innerHTML = '';
+      data.forEach(u => {
+        tbody.innerHTML += `<tr>
+          <td>${escapeHtml(u.nome)}</td>
+          <td>${u.data_nascimento || ''}</td>
+          <td>${u.created_at ? new Date(u.created_at).toLocaleString() : ''}</td>
+          <td>${u.last_active ? new Date(u.last_active).toLocaleString() : ''}</td>
+          <td>${escapeHtml(u.role)}</td>
+        </tr>`;
+      });
+
+      document.getElementById('totalUsers').textContent = data.length;
+
+      const fifteenAgo = new Date(Date.now() - 15*60*1000).toISOString();
+      const { data: online, error: onlineErr } = await supabase.from('profiles').select('id').gt('last_active', fifteenAgo);
+      document.getElementById('onlineUsers').textContent = onlineErr ? '—' : (online||[]).length;
+    }
+
+    function clearFilters(){ document.getElementById('start').value=''; document.getElementById('end').value=''; loadData(); }
+
+    (async () => {
+      const ok = await ensureAdmin();
+      if (!ok) return;
+      await loadData();
+    })();
+  </script>
+</body>
+</html>

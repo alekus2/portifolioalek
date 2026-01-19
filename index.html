@@ -6,64 +6,104 @@
   <title>Loja Exemplo — Home</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
   <style>
-    :root{--bg:#07102a;--card:#0b1220;--muted:#94a3b8;--accent:#06b6d4}
+    :root{
+      --bg:#07102a; --card:#0b1220; --muted:#94a3b8; --accent:#ffe600; --accent-dark:#f0c400;
+      --btn-bg:linear-gradient(90deg,#06b6d4,#7c3aed);
+    }
     *{box-sizing:border-box}
-    body{margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#071024 0%, #07132a 70%);color:#e6eef8;min-height:100vh;display:flex;flex-direction:column}
-    header{display:flex;justify-content:space-between;align-items:center;padding:20px 28px}
-    .brand{display:flex;gap:14px;align-items:center}
-    .logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#7c3aed);display:flex;align-items:center;justify-content:center;font-weight:800;color:#061226}
-    nav{display:flex;gap:12px;align-items:center}
-    .btn{background:linear-gradient(90deg,var(--accent),#7c3aed);border:none;padding:10px 14px;border-radius:10px;color:#061226;font-weight:700;cursor:pointer}
-    .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 12px;border-radius:8px;color:var(--muted);cursor:pointer}
-    main{flex:1;display:flex;align-items:center;justify-content:center;padding:28px}
-    .hero{max-width:1100px;width:100%;display:grid;grid-template-columns:1fr 420px;gap:28px;align-items:center}
-    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 8px 30px rgba(2,6,23,0.6)}
-    input[type="email"]{flex:1;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
-    footer{padding:14px 28px;color:var(--muted);font-size:14px;border-top:1px solid rgba(255,255,255,0.03)}
-    .user-area{display:flex;gap:8px;align-items:center}
-    @media(max-width:980px){ .hero{grid-template-columns:1fr} .product-mock{order:-1} }
+    body{margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#071024 0%, #07132a 70%);color:#111;min-height:100vh;display:flex;flex-direction:column}
+    /* Topbar estilo mercado livre-like */
+    header.topbar{display:grid;grid-template-columns:240px 1fr 260px;gap:12px;align-items:center;padding:12px 20px;background:var(--accent);color:#111}
+    .logo{background:#111;color:var(--accent);width:44px;height:44px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800}
+    .search{width:100%;padding:10px 14px;border-radius:6px;border:none;outline:none}
+    .auth{display:flex;gap:12px;align-items:center;justify-content:flex-end}
+    .auth a, .auth button{background:none;border:none;cursor:pointer;font-weight:700;color:#111;text-decoration:none}
+    .profileBtn{background:transparent;border:1px solid rgba(0,0,0,0.06);padding:8px 10px;border-radius:8px;display:flex;align-items:center;gap:8px;cursor:pointer}
+    .dropdown{position:relative}
+    .menu{position:absolute;right:0;top:calc(100% + 8px);background:white;color:#111;border-radius:8px;min-width:180px;box-shadow:0 10px 30px rgba(0,0,0,0.15);overflow:hidden;display:none}
+    .menu a, .menu button{display:block;padding:10px 12px;text-decoration:none;color:inherit;border:none;background:none;text-align:left;width:100%;cursor:pointer}
+    .menu a:hover, .menu button:hover{background:#f3f3f3}
+    main{flex:1;padding:28px;display:flex;justify-content:center}
+    .container{max-width:1200px;width:100%}
+    .hero{display:grid;grid-template-columns:1fr 420px;gap:28px;align-items:center}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+    .newsletter{display:flex;gap:8px;margin-top:12px}
+    .newsletter input{flex:1;padding:12px;border-radius:10px;border:1px solid rgba(0,0,0,0.06)}
+    .btn-primary{background:var(--btn-bg);color:#061226;border:none;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:700}
+    /* product grid */
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:26px}
+    .card-prod{background:white;padding:12px;border-radius:10px;color:#111}
+    .card-prod img{width:100%;height:160px;object-fit:cover;border-radius:8px}
+    footer{padding:18px 20px;color:#94a3b8;background:transparent;border-top:1px solid rgba(255,255,255,0.03)}
+    @media(max-width:980px){ .hero{grid-template-columns:1fr} .grid{grid-template-columns:repeat(2,1fr)} header.topbar{grid-template-columns:1fr} .search{display:none} }
+    @media(max-width:640px){ .grid{grid-template-columns:1fr} }
   </style>
 </head>
 <body>
 
-  <header>
-    <div class="brand">
+  <header class="topbar" role="banner">
+    <div style="display:flex;align-items:center;gap:12px">
       <div class="logo">LX</div>
-      <div>
-        <div style="font-weight:800">Loja Exemplo</div>
-        <div style="color:var(--muted);font-size:13px">Produtos com entrega rápida</div>
-      </div>
+      <div style="font-weight:800">Loja Exemplo</div>
     </div>
 
-    <nav id="topNav">
-      <button id="loginBtn" class="btn">Logar</button>
+    <div>
+      <input class="search" placeholder="Buscar produtos, marcas e muito mais..." aria-label="Buscar">
+    </div>
 
-      <div id="userArea" class="user-area" style="display:none">
-        <span id="greeting" style="color:var(--muted)"></span>
-        <button id="adminBtn" class="btn-ghost" style="display:none">Admin</button>
-        <button id="logoutBtn" class="btn-ghost">Sair</button>
+    <div class="auth" id="authArea">
+      <!-- estado para anon -->
+      <div id="guestArea" style="display:flex;gap:10px;align-items:center">
+        <a href="login.html" id="createBtn">Criar conta</a>
+        <a href="login.html" id="loginBtn">Entrar</a>
       </div>
-    </nav>
+
+      <!-- estado para usuario -->
+      <div id="userArea" style="display:none;align-items:center">
+        <div class="dropdown">
+          <button id="profileBtn" class="profileBtn" aria-haspopup="true" aria-expanded="false">
+            <span id="profileName">Usuário</span>
+            <svg width="14" height="10" viewBox="0 0 24 24" fill="none" style="opacity:0.8"><path d="M6 9l6 6 6-6" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div id="profileMenu" class="menu" role="menu" aria-hidden="true">
+            <a id="myAccount" href="#">Minha conta</a>
+            <a id="insightsLink" href="admin.html" style="display:none">Insights</a>
+            <button id="logoutBtnMenu">Sair</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </header>
 
   <main>
-    <div class="hero">
-      <div>
-        <span style="display:inline-block;padding:6px 10px;background:rgba(255,255,255,0.03);border-radius:999px;color:var(--accent);font-weight:700;font-size:13px">Lançamento</span>
-        <h1 style="font-size:40px;margin:12px 0">Produtos que fazem a diferença — entregue rápido</h1>
-        <p style="color:var(--muted);margin:0 0 18px">Design moderno, qualidade e preço justo. Inscreva-se e receba ofertas exclusivas.</p>
+    <div class="container">
+      <div class="hero">
+        <div>
+          <h1 style="color:#fff;margin:0 0 10px">Produtos que fazem a diferença — entregue rápido</h1>
+          <p style="color:#cbd5e1;margin:0 0 12px">Design moderno, qualidade e preço justo. Veja ofertas e produtos antes de entrar.</p>
 
-        <div style="margin-top:18px" class="card">
-          <form id="newsletterForm" style="display:flex;gap:8px" onsubmit="subscribe(event)">
-            <input id="newsletterEmail" type="email" placeholder="seu@exemplo.com" required>
-            <button class="btn" type="submit">Assinar</button>
-          </form>
-          <div id="newsletterMsg" style="color:var(--muted);margin-top:10px;font-size:14px"></div>
+          <div class="card">
+            <form id="newsletterForm" class="newsletter" onsubmit="subscribe(event)">
+              <input id="newsletterEmail" type="email" placeholder="seu@exemplo.com" required>
+              <button class="btn-primary" type="submit">Assinar</button>
+            </form>
+            <div id="newsletterMsg" style="color:#94a3b8;margin-top:10px;font-size:14px"></div>
+          </div>
+
+          <section id="productsSection">
+            <h2 style="color:#fff;margin-top:22px">Produtos em destaque</h2>
+            <div class="grid" id="productsGrid">
+              <!-- cards de exemplo -->
+              <div class="card-prod"><img src="https://picsum.photos/seed/prod1/600/400" alt=""><h4>Tênis Urbano</h4><div style="font-weight:800">R$ 249,00</div></div>
+              <div class="card-prod"><img src="https://picsum.photos/seed/prod2/600/400" alt=""><h4>Mochila Tech</h4><div style="font-weight:800">R$ 189,00</div></div>
+              <div class="card-prod"><img src="https://picsum.photos/seed/prod3/600/400" alt=""><h4>Fone Wireless</h4><div style="font-weight:800">R$ 129,00</div></div>
+            </div>
+          </section>
         </div>
-      </div>
 
-      <div class="card product-mock" aria-hidden="true">
-        <img src="https://picsum.photos/seed/loja1/800/520" alt="Produto destaque" style="width:100%;border-radius:10px;display:block">
+        <div class="card" aria-hidden="true" style="text-align:center">
+          <img src="https://picsum.photos/seed/loja1/800/520" alt="Destaque" style="width:100%;border-radius:10px;display:block">
+        </div>
       </div>
     </div>
   </main>
@@ -72,12 +112,11 @@
     © <span id="year"></span> Loja Exemplo — todos os direitos reservados
   </footer>
 
-  <!-- Supabase -->
+  <!-- Supabase client (único include; usa sua url/key) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script>
-    document.getElementById('year').textContent = new Date().getFullYear();
-
+    // config
     const SUPABASE_URL = 'https://xqsuvwagygwkkugjqgpu.supabase.co';
     const SUPABASE_KEY = 'sb_publishable__lu67DW_OZJ_kbIw_aY3-Q_AI-DQvH1';
 
@@ -86,66 +125,80 @@
     }
     const supabase = window.supabaseClient;
 
+    document.getElementById('year').textContent = new Date().getFullYear();
+
     // UI refs
-    const loginBtn = document.getElementById('loginBtn');
+    const guestArea = document.getElementById('guestArea');
     const userArea = document.getElementById('userArea');
-    const greeting = document.getElementById('greeting');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const adminBtn = document.getElementById('adminBtn');
-    const newsletterMsg = document.getElementById('newsletterMsg');
+    const profileBtn = document.getElementById('profileBtn');
+    const profileMenu = document.getElementById('profileMenu');
+    const profileName = document.getElementById('profileName');
+    const logoutBtnMenu = document.getElementById('logoutBtnMenu');
+    const insightsLink = document.getElementById('insightsLink');
 
-    // abrir login apenas quando clicar
-    loginBtn.addEventListener('click', () => {
-      // ir para a página de login
-      window.location.href = 'login.html';
+    // toggle dropdown
+    profileBtn.addEventListener('click', () => {
+      const shown = profileMenu.style.display === 'block';
+      profileMenu.style.display = shown ? 'none' : 'block';
+      profileBtn.setAttribute('aria-expanded', (!shown).toString());
+    });
+    // close when click outside
+    document.addEventListener('click', (e) => {
+      if (!profileBtn.contains(e.target) && !profileMenu.contains(e.target)) {
+        profileMenu.style.display = 'none';
+        profileBtn.setAttribute('aria-expanded','false');
+      }
     });
 
-    adminBtn.addEventListener('click', () => window.location.href = 'admin.html');
-    logoutBtn.addEventListener('click', async () => {
+    logoutBtnMenu.addEventListener('click', async () => {
       await supabase.auth.signOut();
-      updateUI(null);
+      await updateHeader();
     });
 
-    // reage a mudança de autenticação (mantém UI sincronizada)
-    supabase.auth.onAuthStateChange((_event, session) => {
-      const user = session?.user ?? null;
-      updateUI(user);
-    });
-
-    // inicial
-    (async function init(){
+    // update header based on auth state
+    async function updateHeader() {
       const { data } = await supabase.auth.getUser();
       const user = data.user ?? null;
-      updateUI(user);
-    })();
 
-    async function updateUI(user) {
       if (!user) {
-        loginBtn.style.display = 'inline-block';
+        guestArea.style.display = 'flex';
         userArea.style.display = 'none';
-        adminBtn.style.display = 'none';
+        return;
+      }
+
+      // show user area and load profile
+      guestArea.style.display = 'none';
+      userArea.style.display = 'flex';
+
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('nome, role')
+        .eq('id', user.id)
+        .single();
+
+      profileName.textContent = (profile && profile.nome) ? profile.nome : (user.email || 'Usuário');
+
+      // show Insights link only if role == 'admin'
+      if (profile && profile.role === 'admin') {
+        insightsLink.style.display = 'block';
       } else {
-        loginBtn.style.display = 'none';
-        userArea.style.display = 'flex';
-
-        // busca perfil (nome, role) — pode falhar se não existir profile
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('nome, role')
-          .eq('id', user.id)
-          .single()
-          .catch(() => ({ data: null }));
-
-        const nome = (profile && profile.nome) ? profile.nome : (user.email || 'Usuário');
-        greeting.textContent = 'Olá, ' + nome;
-
-        if (profile && profile.role === 'admin') adminBtn.style.display = 'inline-block';
-        else adminBtn.style.display = 'none';
+        insightsLink.style.display = 'none';
       }
     }
 
-    // newsletter
-    async function subscribe(e){
+    // subscribe to auth changes
+    supabase.auth.onAuthStateChange((_event, session) => {
+      updateHeader();
+    });
+
+    // initial check
+    (async () => { await updateHeader(); })();
+
+    // newsletter behavior
+    const newsletterForm = document.getElementById('newsletterForm');
+    const newsletterMsg = document.getElementById('newsletterMsg');
+
+    newsletterForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       newsletterMsg.textContent = '';
       const email = document.getElementById('newsletterEmail').value.trim();
@@ -159,7 +212,7 @@
         newsletterMsg.textContent = 'Inscrição realizada com sucesso!';
         e.target.reset();
       }
-    }
+    });
   </script>
 </body>
 </html>
