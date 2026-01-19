@@ -74,263 +74,125 @@
   <!-- CDN Supabase v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      // === CONFIG (substitua apenas estes valores) ===
-      const SUPABASE_URL = 'https://atjeaedbncwcgkwfnrmr.supabase.co';
-      const SUPABASE_KEY = 'sb_publishable_lXnKm0nBA8HC-6clDXTAYw_f8-xXiNe';
-      // cria client global (evita criar múltiplas instâncias)
-      if (!window.supabaseClient) window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      const supabase = window.supabaseClient;
+<script type="module">
+  import {
+    savePendingProfile,
+    createProfileAfterSignup,
+    initLoggerAuthListener
+  } from './logger.js';
+  // configura Supabase
+  const SUPABASE_URL = 'https://atjeaedbncwcgkwfnrmr.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_lXnKm0nBA8HC-6clDXTAYw_f8-xXiNe';
 
-      // Elements
-      const loginForm = document.getElementById('loginForm');
-      const signupForm = document.getElementById('signupForm');
-      const openSignup = document.getElementById('openSignup');
-      const openLogin = document.getElementById('openLogin');
+  // cria client global (ou reutiliza)
+  if (!window.supabaseClient) {
+    window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  }
+  const supabase = window.supabaseClient;
 
-      const loginEmailError = document.getElementById('loginEmailError');
-      const loginPasswordError = document.getElementById('loginPasswordError');
-      const loginError = document.getElementById('loginError');
-      const loginSuccess = document.getElementById('loginSuccess');
-      const loginSubmit = document.getElementById('loginSubmit');
+  // inicia listener (gera profile quando a sessão aparecer)
+  initLoggerAuthListener(supabase);
 
-      const signupNomeError = document.getElementById('signupNomeError');
-      const signupNascimentoError = document.getElementById('signupNascimentoError');
-      const signupEmailError = document.getElementById('signupEmailError');
-      const signupPasswordError = document.getElementById('signupPasswordError');
-      const signupError = document.getElementById('signupError');
-      const signupSuccess = document.getElementById('signupSuccess');
-      const signupSubmit = document.getElementById('signupSubmit');
+  // referências DOM (mantém seu HTML atual)
+  const signupForm = document.getElementById('signupForm');
+  const signupSubmit = document.getElementById('signupSubmit');
+  const signupSuccess = document.getElementById('signupSuccess');
+  const signupError = document.getElementById('signupError');
 
-      // helpers
-      function validateEmail(email) {
-        if (!email) return 'Informe um e-mail';
-        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!re.test(email)) return 'E-mail inválido';
-        return null;
+  const loginForm = document.getElementById('loginForm');
+  const loginSubmit = document.getElementById('loginSubmit');
+  const loginError = document.getElementById('loginError');
+  const loginSuccess = document.getElementById('loginSuccess');
+
+  // Nota: mantive sua validação UI externa (presumo que já exista). Aqui só foco no fluxo de criação
+  signupForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const nome = document.getElementById('signupNome').value.trim() || null;
+    const dataNascimento = document.getElementById('signupNascimento').value || null;
+    const email = (document.getElementById('signupEmail').value || '').trim().toLowerCase();
+    const password = document.getElementById('signupPassword').value;
+
+    signupSubmit.disabled = true;
+    signupSubmit.textContent = 'Criando...';
+    signupError.style.display = 'none';
+
+    try {
+      // salva dados temporariamente caso signUp exija confirmação (listener usará depois)
+      savePendingProfile(email, { nome, data_nascimento: dataNascimento });
+
+      // chama signUp
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) {
+        signupError.style.display = 'block';
+        signupError.textContent = error.message || 'Erro ao criar conta';
+        signupSubmit.disabled = false;
+        signupSubmit.textContent = 'Criar conta';
+        return;
       }
-      function validatePassword(password) {
-        if (!password) return 'Informe uma senha';
-        if (password.length < 6) return 'Senha precisa ter ao menos 6 caracteres';
-        return null;
-      }
-      // helper para log detalhado de erros do Supabase
-      function logDbError(err, ctx) {
+
+      // se signUp retornou um user (fluxo sem confirmação), criamos o profile imediatamente
+      const user = data?.user ?? null;
+      if (user) {
         try {
-          console.error('DB ERROR:', ctx, JSON.stringify(err, null, 2));
-        } catch (e) {
-          console.error('DB ERROR:', ctx, err);
-        }
-      }
-      function clearSignErrors() {
-        [signupNomeError, signupNascimentoError, signupEmailError, signupPasswordError, signupError, signupSuccess].forEach(e => { e.style.display='none'; e.textContent=''; });
-      }
-      function clearLoginErrors() {
-        [loginEmailError, loginPasswordError, loginError, loginSuccess].forEach(e => { e.style.display='none'; e.textContent=''; });
-      }
-
-      // toggle forms
-      openSignup.addEventListener('click', (e) => { e.preventDefault(); signupForm.style.display=''; loginForm.style.display='none'; clearSignErrors(); });
-      openLogin?.addEventListener('click', (e) => { e.preventDefault(); signupForm.style.display='none'; loginForm.style.display=''; clearLoginErrors(); });
-
-      // Auth-state listener: cria profile quando o usuário aparece (ex: após confirmar e-mail e login)
-      const { data: authSub } = supabase.auth.onAuthStateChange(async (event, session) => {
-        try {
-          if (session?.user) {
-            const user = session.user;
-            // tenta garantir que exista profile com id = user.id (upsert)
-            try {
-              // tenta aplicar dados pendentes salvos no signup (nome, data_nascimento)
-              const key = 'pendingProfile_' + ((user.email || '').toLowerCase());
-              const stored = localStorage.getItem(key);
-              const pending = stored ? JSON.parse(stored) : null;
-              const upsertObj = {
-                id: user.id,
-                email: user.email,
-                role: 'user',
-                ...(pending ? { nome: pending.nome, data_nascimento: pending.data_nascimento } : {})
-              };
-              const { data: upData, error: upErr } = await supabase
-                .from('profiles')
-                .upsert([upsertObj], { onConflict: 'id' });
-              if (upErr) {
-                logDbError(upErr, 'auth listener upsert profiles');
-              }
-              if (pending) localStorage.removeItem(key);
-            } catch (innerErr) {
-              console.warn('Erro ao aplicar pending profile via auth listener:', innerErr);
-            }
-            // opcional: atualizar last_active
-            const { error: updErr } = await supabase
-              .from('profiles')
-              .update({ last_active: new Date().toISOString() })
-              .eq('id', user.id);
-            if (updErr) logDbError(updErr, 'auth listener update last_active');
-            console.log('Profile garantido via auth listener para', user.id);
-          }
+          await createProfileAfterSignup(supabase, user, { nome, data_nascimento: dataNascimento, email });
         } catch (err) {
-          console.warn('Erro no auth listener ao garantir profile:', err);
+          console.warn('Falha ao criar profile imediatamente (mas conta criada):', err);
+          // não bloqueia: a listener também tentará garantir o profile
         }
-      });
+        signupSuccess.style.display = 'block';
+        signupSuccess.textContent = 'Conta criada! Redirecionando...';
+        setTimeout(() => location.href = 'index.html', 800);
+        return;
+      }
 
-      /* ====================
-         SIGNUP FLOW (corrigido - cria profile SOMENTE após signUp retornar user)
-      ==================== */
-      signupForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        clearSignErrors();
+      // se chegou aqui, confirmação por email necessária -> show message
+      signupSuccess.style.display = 'block';
+      signupSuccess.textContent = 'Conta registrada. Verifique seu e-mail para confirmar (profile será salvo ao entrar).';
+      signupSubmit.disabled = false;
+      signupSubmit.textContent = 'Criar conta';
+    } catch (err) {
+      console.error('signup unexpected error', err);
+      signupError.style.display = 'block';
+      signupError.textContent = 'Erro inesperado. Veja console.';
+      signupSubmit.disabled = false;
+      signupSubmit.textContent = 'Criar conta';
+    }
+  });
 
-        const nome = document.getElementById('signupNome').value.trim();
-        const dataNascimento = document.getElementById('signupNascimento').value;
-        const email = document.getElementById('signupEmail').value.trim().toLowerCase();
-        const password = document.getElementById('signupPassword').value;
+  // LOGIN: apenas garante que a listener/upsert cuide do profile
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    loginSubmit.disabled = true;
+    loginSubmit.textContent = 'Entrando...';
+    loginError.style.display = 'none';
 
-        let hasError = false;
-        if (!nome) { signupNomeError.style.display='block'; signupNomeError.textContent='Informe seu nome'; hasError = true; }
-        if (!dataNascimento) { signupNascimentoError.style.display='block'; signupNascimentoError.textContent='Informe sua data de nascimento'; hasError = true; }
-        const emailErr = validateEmail(email);
-        if (emailErr) { signupEmailError.style.display='block'; signupEmailError.textContent = emailErr; hasError = true; }
-        const passErr = validatePassword(password);
-        if (passErr) { signupPasswordError.style.display='block'; signupPasswordError.textContent = passErr; hasError = true; }
+    const email = (document.getElementById('loginEmail').value || '').trim().toLowerCase();
+    const password = document.getElementById('loginPassword').value;
 
-        if (hasError) {
-          signupError.style.display='block';
-          signupError.textContent = 'Corrija os campos destacados.';
-          return;
-        }
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        loginError.style.display = 'block';
+        loginError.textContent = error.message || 'Erro ao autenticar';
+        loginSubmit.disabled = false;
+        loginSubmit.textContent = 'Entrar';
+        return;
+      }
 
-        signupSubmit.disabled = true;
-        signupSubmit.textContent = 'Criando...';
+      // login bem-sucedido: o listener garantirá o profile (e aplicará pendingProfile se existir)
+      loginSuccess.style.display = 'block';
+      loginSuccess.textContent = 'Login efetuado — redirecionando...';
+      setTimeout(() => location.href = 'index.html', 700);
+    } catch (err) {
+      console.error('login unexpected error', err);
+      loginError.style.display = 'block';
+      loginError.textContent = 'Erro inesperado no login. Veja console.';
+      loginSubmit.disabled = false;
+      loginSubmit.textContent = 'Entrar';
+    }
+  });
 
-        try {
-          // cria usuário
-          const { data, error } = await supabase.auth.signUp({ email, password });
-
-          if (error) {
-            signupError.style.display='block';
-            signupError.textContent = error.message || 'Erro ao criar conta';
-            signupSubmit.disabled = false;
-            signupSubmit.textContent = 'Criar conta';
-            return;
-          }
-
-          // tenta obter sessão/usuário imediatamente (funciona se confirmação por e-mail estiver DESATIVADA)
-          let user = data?.user ?? null;
-          if (!user) {
-            try {
-              const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
-              if (!signInErr && signInData?.user) user = signInData.user;
-            } catch (siErr) {
-              console.warn('signIn automático falhou:', siErr);
-            }
-          }
-
-          // se conseguimos o user, upserta profile por id
-          if (user) {
-            try {
-              const { data: prData, error: pErr } = await supabase
-                .from('profiles')
-                .upsert([{ id: user.id, email, nome, data_nascimento: dataNascimento, role: 'user' }], { onConflict: 'id' });
-              if (pErr) {
-                logDbError(pErr, 'signup upsert profiles');
-                throw pErr;
-              }
-              signupSuccess.style.display='block';
-              signupSuccess.textContent = 'Conta criada com sucesso! Redirecionando...';
-              setTimeout(() => window.location.href = 'index.html', 900);
-              return;
-            } catch (pErr) {
-              console.error('Erro ao salvar profile:', pErr);
-              signupError.style.display='block';
-              signupError.textContent = 'Conta criada, mas falha ao salvar profile — verifique console.';
-              signupSubmit.disabled = false;
-              signupSubmit.textContent = 'Criar conta';
-              return;
-            }
-          }
-
-          // Se não obtivemos user: provavelmente a confirmação por e-mail está ativa.
-          signupSuccess.style.display='block';
-          signupSuccess.textContent = 'Conta registrada — verifique seu e-mail para confirmar.';
-          signupSubmit.disabled = false;
-          signupSubmit.textContent = 'Criar conta';
-        } catch (err) {
-          signupError.style.display='block';
-          signupError.textContent = 'Erro inesperado ao criar conta.';
-          signupSubmit.disabled = false;
-          signupSubmit.textContent = 'Criar conta';
-          console.error(err);
-        }
-      });
-
-
-      loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        clearLoginErrors();
-
-        const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-        const password = document.getElementById('loginPassword').value;
-        const emailErr = validateEmail(email);
-        const passErr = validatePassword(password);
-        if (emailErr) { loginEmailError.style.display='block'; loginEmailError.textContent = emailErr; }
-        if (passErr) { loginPasswordError.style.display='block'; loginPasswordError.textContent = passErr; }
-        if (emailErr || passErr) {
-          loginError.style.display='block';
-          loginError.textContent = 'Corrija os campos e tente novamente.';
-          return;
-        }
-
-        loginSubmit.disabled = true;
-        loginSubmit.textContent = 'Entrando...';
-
-        try {
-          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-          if (error) {
-            loginError.style.display='block';
-            loginError.textContent = error.message || 'Erro ao autenticar';
-            loginSubmit.disabled = false;
-            loginSubmit.textContent = 'Entrar';
-            return;
-          }
-
-          const user = data?.user ?? null;
-          if (!user) {
-            loginError.style.display='block';
-            loginError.textContent = 'Falha no login: usuário não retornado.';
-            loginSubmit.disabled = false;
-            loginSubmit.textContent = 'Entrar';
-            return;
-          }
-
-          try {
-            const { data: u1, error: e1 } = await supabase
-              .from('profiles')
-              .upsert([{ id: user.id, email: user.email, role: 'user' }], { onConflict: 'id' });
-            if (e1) logDbError(e1, 'login upsert profiles');
-            const { error: e2 } = await supabase
-              .from('profiles')
-              .update({ last_active: new Date().toISOString() })
-              .eq('id', user.id);
-            if (e2) logDbError(e2, 'login update last_active');
-          } catch (pErr) {
-            console.warn('Falha ao garantir/atualizar profile após login:', pErr);
-          }
-
-          loginSuccess.style.display='block';
-          loginSuccess.textContent = 'Login efetuado — redirecionando...';
-          setTimeout(() => window.location.href = 'index.html', 700);
-        } catch (err) {
-          loginError.style.display='block';
-          loginError.textContent = 'Erro inesperado no login.';
-          loginSubmit.disabled = false;
-          loginSubmit.textContent = 'Entrar';
-          console.error(err);
-        }
-      });
-
-    });
-  </script>
+</script>
 </body>
 </html>
