@@ -118,7 +118,8 @@
         loginSubmit.disabled = true;
         loginSubmit.textContent = 'Entrando...';
 
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({email,password});window.location.href = "index.html";
+
 
         if (error) {
           loginError.textContent = error.message || 'Erro ao logar';
