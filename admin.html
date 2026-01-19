@@ -48,9 +48,13 @@
       if (!window.supabaseClient) window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       const supabase = window.supabaseClient;
 
+      function redirectHome() {
+        window.location.href = 'index.html';
+      }
+
       document.getElementById('logoutBtn').addEventListener('click', async () => {
         await supabase.auth.signOut();
-        window.location.href = '/';
+        redirectHome();
       });
 
       async function ensureAdmin() {
@@ -58,8 +62,8 @@
         const user = data.user;
         if (!user) { alert('Faça login'); window.location.href = 'login.html'; return false; }
         const { data: profile, error } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-        if (error || !profile) { alert('Perfil não encontrado'); window.location.href = '/'; return false; }
-        if (profile.role !== 'admin') { alert('Acesso negado'); window.location.href = '/'; return false; }
+        if (error || !profile) { alert('Perfil não encontrado'); window.location.href = 'index.html'; return false; }
+        if (profile.role !== 'admin') { alert('Acesso negado'); window.location.href = 'index.html'; return false; }
         return true;
       }
 
@@ -102,4 +106,3 @@
   </script>
 </body>
 </html>
-        

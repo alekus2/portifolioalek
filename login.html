@@ -109,6 +109,12 @@
         showSignup();
       }
 
+      // Função utilitária para redirecionar ao índice de forma segura (usa index.html)
+      function redirectHome() {
+        // Redireciona para index.html — funciona em servidor e em arquivo local
+        window.location.href = 'index.html';
+      }
+
       // LOGIN handler
       loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -117,21 +123,30 @@
         const password = document.getElementById('loginPassword').value;
         loginSubmit.disabled = true;
         loginSubmit.textContent = 'Entrando...';
-        const { data, error } = await supabase.auth.signInWithPassword({email,password});
-        if (error) {
-          loginError.textContent = error.message || 'Erro ao logar';
+        try {
+          const { data, error } = await supabase.auth.signInWithPassword({email,password});
+          if (error) {
+            loginError.textContent = error.message || 'Erro ao logar';
+            loginError.style.display = '';
+            loginSubmit.disabled = false;
+            loginSubmit.textContent = 'Entrar';
+            return;
+          }
+          const user = data.user;
+          if (user) {
+            await supabase.from('profiles').upsert([{ id: user.id, last_active: new Date().toISOString() }], { onConflict: 'id' });
+            // redirect to explicit index
+            redirectHome();
+          } else {
+            alert('Verifique seu email para confirmar a conta. Depois faça login.');
+            redirectHome();
+          }
+        } catch (err) {
+          console.error(err);
+          loginError.textContent = 'Erro inesperado';
           loginError.style.display = '';
           loginSubmit.disabled = false;
           loginSubmit.textContent = 'Entrar';
-          return;
-        }
-        const user = data.user;
-        if (user) {
-          await supabase.from('profiles').upsert([{ id: user.id, last_active: new Date().toISOString() }], { onConflict: 'id' });
-          window.location.href = '/';
-        } else {
-          alert('Verifique seu email para confirmar a conta. Depois faça login.');
-          window.location.href = '/';
         }
       });
 
@@ -145,30 +160,39 @@
         const password = document.getElementById('signupPassword').value;
         signupSubmit.disabled = true;
         signupSubmit.textContent = 'Criando...';
-        const { data: signData, error: signErr } = await supabase.auth.signUp({ email, password });
-        if (signErr) {
-          signupError.textContent = signErr.message || 'Erro ao cadastrar';
-          signupError.style.display = '';
-          signupSubmit.disabled = false;
-          signupSubmit.textContent = 'Criar conta';
-          return;
-        }
-        const user = signData.user;
-        if (user) {
-          const { error: pErr } = await supabase.from('profiles').insert([{ id: user.id, nome, data_nascimento: dataNascimento, role: 'user', last_active: new Date().toISOString() }]);
-          if (pErr) {
-            console.error(pErr);
-            signupError.textContent = 'Erro ao criar perfil (veja console)';
+        try {
+          const { data: signData, error: signErr } = await supabase.auth.signUp({ email, password });
+          if (signErr) {
+            signupError.textContent = signErr.message || 'Erro ao cadastrar';
             signupError.style.display = '';
             signupSubmit.disabled = false;
             signupSubmit.textContent = 'Criar conta';
             return;
           }
-          window.location.href = '/';
-          return;
+          const user = signData.user;
+          if (user) {
+            const { error: pErr } = await supabase.from('profiles').insert([{ id: user.id, nome, data_nascimento: dataNascimento, role: 'user', last_active: new Date().toISOString() }]);
+            if (pErr) {
+              console.error(pErr);
+              signupError.textContent = 'Erro ao criar perfil (veja console)';
+              signupError.style.display = '';
+              signupSubmit.disabled = false;
+              signupSubmit.textContent = 'Criar conta';
+              return;
+            }
+            // redirect explicitly
+            redirectHome();
+            return;
+          }
+          alert('Conta criada! Verifique seu e-mail para confirmar antes de entrar.');
+          redirectHome();
+        } catch (err) {
+          console.error(err);
+          signupError.textContent = 'Erro inesperado';
+          signupError.style.display = '';
+          signupSubmit.disabled = false;
+          signupSubmit.textContent = 'Criar conta';
         }
-        alert('Conta criada! Verifique seu e-mail para confirmar antes de entrar.');
-        window.location.href = '/';
       });
     });
   </script>
