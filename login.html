@@ -191,20 +191,11 @@
         signupSubmit.disabled = true;
         signupSubmit.textContent = 'Criando...';
 
-        // salva dados pendentes para serem aplicados quando o usuário confirmar e fizer login
         try {
-          localStorage.setItem('pendingProfile_' + email, JSON.stringify({ nome, data_nascimento: dataNascimento, email }));
-        } catch (e) {
-          console.warn('Não foi possível salvar pendingProfile localmente', e);
-        }
-
-        try {
-          // 1) chama signUp primeiro
+          // cria usuário
           const { data, error } = await supabase.auth.signUp({ email, password });
 
           if (error) {
-            // remove pending se falhou no signUp
-            try { localStorage.removeItem('pendingProfile_' + email); } catch(_) {}
             signupError.style.display='block';
             signupError.textContent = error.message || 'Erro ao criar conta';
             signupSubmit.disabled = false;
@@ -212,48 +203,44 @@
             return;
           }
 
-          // tenta criar o profile imediatamente, usando email como chave (comportamento similar ao newsletter)
-          try {
-            // se o signUp já retornou user, inclua id; caso contrário, insira apenas por email
-            const user = data?.user ?? null;
-            const profileObj = user
-              ? { id: user.id, email, nome, data_nascimento: dataNascimento, role: 'user' }
-              : { email, nome, data_nascimento: dataNascimento, role: 'user' };
-            // upsert por email (ou id quando presente)
-            await supabase
-              .from('profiles')
-              .upsert([profileObj], { onConflict: user ? 'id' : 'email' });
-          } catch (insertErr) {
-            console.warn('Falha ao inserir/atualizar profile imediatamente:', insertErr);
+          // tenta obter sessão/usuário imediatamente (funciona se confirmação por e-mail estiver DESATIVADA)
+          let user = data?.user ?? null;
+          if (!user) {
+            try {
+              const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+              if (!signInErr && signInData?.user) user = signInData.user;
+            } catch (siErr) {
+              console.warn('signIn automático falhou:', siErr);
+            }
           }
 
-          // se o signUp já retornou user (sem confirmar email), cria o profile com id = user.id
-          const user = data?.user ?? null;
+          // se conseguimos o user, upserta profile por id
           if (user) {
             try {
-              await supabase
+              const { error: pErr } = await supabase
                 .from('profiles')
                 .upsert([{ id: user.id, email, nome, data_nascimento: dataNascimento, role: 'user' }], { onConflict: 'id' });
-              // remove pending se já criamos imediatamente
-              try { localStorage.removeItem('pendingProfile_' + email); } catch(_) {}
-            } catch (upErr) {
-              // não bloqueamos o usuário, apenas informamos
-              console.warn('Falha ao criar profile imediatamente:', upErr);
+              if (pErr) throw pErr;
+              signupSuccess.style.display='block';
+              signupSuccess.textContent = 'Conta criada com sucesso! Redirecionando...';
+              setTimeout(() => window.location.href = 'index.html', 900);
+              return;
+            } catch (pErr) {
+              console.error('Erro ao salvar profile:', pErr);
+              signupError.style.display='block';
+              signupError.textContent = 'Conta criada, mas falha ao salvar profile — verifique console.';
+              signupSubmit.disabled = false;
+              signupSubmit.textContent = 'Criar conta';
+              return;
             }
-            signupSuccess.style.display='block';
-            signupSuccess.textContent = 'Conta criada com sucesso! Redirecionando...';
-            setTimeout(() => window.location.href = 'index.html', 900);
-            return;
           }
 
-          // se chegou aqui: confirmação por e-mail necessária. O listener de auth criará o profile quando o usuário confirmar e fizer login.
+          // Se não obtivemos user: provavelmente a confirmação por e-mail está ativa.
           signupSuccess.style.display='block';
           signupSuccess.textContent = 'Conta registrada — verifique seu e-mail para confirmar.';
           signupSubmit.disabled = false;
           signupSubmit.textContent = 'Criar conta';
         } catch (err) {
-          // remove pending em caso de erro inesperado
-          try { localStorage.removeItem('pendingProfile_' + email); } catch(_) {}
           signupError.style.display='block';
           signupError.textContent = 'Erro inesperado ao criar conta.';
           signupSubmit.disabled = false;
