@@ -9,68 +9,59 @@
     :root{--bg:#06132a;--accent:#0b6fb6;--muted:#9fb6d0}
     *{box-sizing:border-box}
     body{margin:0;min-height:100vh;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,var(--bg) 0%, #07132a 70%);display:flex;align-items:center;justify-content:center;color:#e6eef8;padding:24px}
-    .card{width:420px;background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));padding:28px;border-radius:14px;border:1px solid rgba(255,255,255,0.04);box-shadow:0 18px 60px rgba(2,6,23,0.6)}
+    .card{width:440px;background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));padding:28px;border-radius:14px;border:1px solid rgba(255,255,255,0.04);box-shadow:0 18px 60px rgba(2,6,23,0.6)}
     h2{margin:0 0 14px;font-size:22px}
-    .tabs{display:flex;gap:8px;margin-bottom:16px}
-    .tab{flex:1;padding:8px 10px;border-radius:8px;text-align:center;cursor:pointer;font-weight:600;user-select:none;background:transparent;color:#dff3ff}
-    .tab.active{background:linear-gradient(90deg,#083b67,#0b5d93);box-shadow:0 6px 18px rgba(3,10,30,0.6)}
     label{display:block;font-size:13px;color:var(--muted);margin-top:8px}
     input{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit;margin-top:6px}
     .btn{margin-top:14px;width:100%;padding:10px;border-radius:10px;border:none;background:linear-gradient(90deg,#1fb6ff,#3b82f6);color:#061226;font-weight:700;cursor:pointer}
     .small{font-size:13px;color:var(--muted);margin-top:10px;text-align:center}
     .link{color:#7dd3fc;cursor:pointer;text-decoration:underline}
+    .field-error{color:#ffb4b4;font-size:13px;margin-top:6px;display:none}
     .errors{color:#ffb4b4;margin-top:8px;font-size:14px;display:none}
     .success{color:#b6ffd9;margin-top:8px;font-size:14px;display:none}
-    .field-error{color:#ffb4b4;font-size:13px;margin-top:6px;display:none}
     @media(max-width:540px){ .card{width:92vw} }
   </style>
 </head>
 <body>
   <div class="card" role="region" aria-labelledby="authTitle">
-    <h2 id="authTitle">Entrar na Loja Exemplo</h2>
-
-    <div class="tabs" role="tablist">
-      <div id="tabLogin" class="tab active" role="tab" tabindex="0">Entrar</div>
-      <div id="tabSignup" class="tab" role="tab" tabindex="0">Criar conta</div>
-    </div>
-
-    <!-- ARIA live region para mensagens gerais -->
-    <div id="globalMsg" role="status" aria-live="polite" style="min-height:28px"></div>
+    <h2 id="authTitle">Entrar / Criar conta — Loja Exemplo</h2>
 
     <!-- LOGIN -->
     <form id="loginForm" autocomplete="on" novalidate>
       <label for="loginEmail">E-mail</label>
-      <input id="loginEmail" type="email" inputmode="email" autocomplete="email" required>
-      <div id="loginEmailError" class="field-error" aria-live="polite"></div>
+      <input id="loginEmail" type="email" inputmode="email" autocomplete="email">
+      <div id="loginEmailError" class="field-error"></div>
 
       <label for="loginPassword">Senha</label>
-      <input id="loginPassword" type="password" autocomplete="current-password" required>
-      <div id="loginPasswordError" class="field-error" aria-live="polite"></div>
+      <input id="loginPassword" type="password" autocomplete="current-password">
+      <div id="loginPasswordError" class="field-error"></div>
 
       <div id="loginError" class="errors" role="alert"></div>
       <div id="loginSuccess" class="success" role="status"></div>
 
       <button class="btn" type="submit" id="loginSubmit">Entrar</button>
-      <div class="small">Ou <span id="openSignup" class="link">crie sua conta</span></div>
+      <div class="small">Ainda não tem conta? <span id="openSignup" class="link">Criar conta</span></div>
     </form>
 
+    <hr style="margin:18px 0;opacity:0.06">
+
     <!-- SIGNUP -->
-    <form id="signupForm" style="display:none" autocomplete="on" novalidate>
+    <form id="signupForm" autocomplete="on" style="display:none" novalidate>
       <label for="signupNome">Nome completo</label>
       <input id="signupNome" type="text" autocomplete="name" required>
-      <div id="signupNomeError" class="field-error" aria-live="polite"></div>
+      <div id="signupNomeError" class="field-error"></div>
 
       <label for="signupNascimento">Data de nascimento</label>
       <input id="signupNascimento" type="date" required>
-      <div id="signupNascimentoError" class="field-error" aria-live="polite"></div>
+      <div id="signupNascimentoError" class="field-error"></div>
 
       <label for="signupEmail">E-mail</label>
       <input id="signupEmail" type="email" inputmode="email" autocomplete="email" required>
-      <div id="signupEmailError" class="field-error" aria-live="polite"></div>
+      <div id="signupEmailError" class="field-error"></div>
 
       <label for="signupPassword">Senha (mín 6 caracteres)</label>
       <input id="signupPassword" type="password" autocomplete="new-password" minlength="6" required>
-      <div id="signupPasswordError" class="field-error" aria-live="polite"></div>
+      <div id="signupPasswordError" class="field-error"></div>
 
       <div id="signupError" class="errors" role="alert"></div>
       <div id="signupSuccess" class="success" role="status"></div>
@@ -84,24 +75,18 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
+      // Supabase config (mantive sua URL/key pub)
       const SUPABASE_URL = 'https://xqsuvwagygwkkugjqgpu.supabase.co';
       const SUPABASE_KEY = 'sb_publishable__lu67DW_OZJ_kbIw_aY3-Q_AI-DQvH1';
-
-      if (!window.supabaseClient) {
-        window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      }
+      if (!window.supabaseClient) window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       const supabase = window.supabaseClient;
 
       // Elements
-      const tabLogin = document.getElementById('tabLogin');
-      const tabSignup = document.getElementById('tabSignup');
       const loginForm = document.getElementById('loginForm');
       const signupForm = document.getElementById('signupForm');
       const openSignup = document.getElementById('openSignup');
       const openLogin = document.getElementById('openLogin');
-      const globalMsg = document.getElementById('globalMsg');
 
-      // Field error nodes
       const loginEmailError = document.getElementById('loginEmailError');
       const loginPasswordError = document.getElementById('loginPasswordError');
       const loginError = document.getElementById('loginError');
@@ -116,225 +101,195 @@
       const signupSuccess = document.getElementById('signupSuccess');
       const signupSubmit = document.getElementById('signupSubmit');
 
-      function clearFieldErrors() {
-        [loginEmailError, loginPasswordError,
-         signupNomeError, signupNascimentoError, signupEmailError, signupPasswordError].forEach(el => {
-          if (el) { el.style.display = 'none'; el.textContent = ''; }
-        });
-        [loginError, signupError, loginSuccess, signupSuccess, globalMsg].forEach(el => {
-          if (el) { el.style.display = 'none'; el.textContent = ''; }
-        });
-      }
-
-      function showGlobalMessage(text, type='error') {
-        globalMsg.style.display = 'block';
-        globalMsg.textContent = text;
-        globalMsg.style.color = (type === 'error') ? '#ffb4b4' : '#b6ffd9';
-      }
-
+      // helpers
       function validateEmail(email) {
-        if (!email) return 'Informe um email';
-        // simples verificação
+        if (!email) return 'Informe um e-mail';
         const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!re.test(email)) return 'E-mail inválido';
         return null;
       }
-
       function validatePassword(password) {
         if (!password) return 'Informe uma senha';
-        if (password.length < 6) return 'A senha deve ter ao menos 6 caracteres';
+        if (password.length < 6) return 'Senha precisa ter ao menos 6 caracteres';
         return null;
       }
-
-      // Tab handlers
-      function showLogin() {
-        tabLogin.classList.add('active');
-        tabSignup.classList.remove('active');
-        loginForm.style.display = '';
-        signupForm.style.display = 'none';
-        clearFieldErrors();
+      function clearSignErrors() {
+        [signupNomeError, signupNascimentoError, signupEmailError, signupPasswordError, signupError, signupSuccess].forEach(e => { e.style.display='none'; e.textContent=''; });
       }
-      function showSignup() {
-        tabSignup.classList.add('active');
-        tabLogin.classList.remove('active');
-        loginForm.style.display = 'none';
-        signupForm.style.display = '';
-        clearFieldErrors();
+      function clearLoginErrors() {
+        [loginEmailError, loginPasswordError, loginError, loginSuccess].forEach(e => { e.style.display='none'; e.textContent=''; });
       }
 
-      tabLogin.addEventListener('click', showLogin);
-      tabSignup.addEventListener('click', showSignup);
-      openSignup.addEventListener('click', (e) => { e.preventDefault(); showSignup(); });
-      openLogin.addEventListener('click', (e) => { e.preventDefault(); showLogin(); });
+      // toggle forms
+      openSignup.addEventListener('click', (e) => { e.preventDefault(); signupForm.style.display=''; loginForm.style.display='none'; clearSignErrors(); });
+      openLogin?.addEventListener('click', (e) => { e.preventDefault(); signupForm.style.display='none'; loginForm.style.display=''; clearLoginErrors(); });
 
-      // Open signup if URL has #signup
-      const params = new URLSearchParams(location.search);
-      if (location.hash === '#signup' || params.get('tab') === 'signup') {
-        showSignup();
-      }
-
-      // Utility: redirect safe to index.html
-      function redirectHome() {
-        window.location.href = 'index.html';
-      }
-
-      // LOGIN submit
-      loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        clearFieldErrors();
-
-        const email = document.getElementById('loginEmail').value.trim();
-        const password = document.getElementById('loginPassword').value;
-
-        // client validation
-        let hasError = false;
-        const emailErr = validateEmail(email);
-        if (emailErr) { loginEmailError.style.display='block'; loginEmailError.textContent = emailErr; hasError = true; }
-        const passErr = validatePassword(password);
-        if (passErr) { loginPasswordError.style.display='block'; loginPasswordError.textContent = passErr; hasError = true; }
-
-        if (hasError) {
-          showGlobalMessage('Corrija os campos destacados e tente novamente.', 'error');
-          return;
-        }
-
-        // UI
-        loginSubmit.disabled = true;
-        loginSubmit.textContent = 'Entrando...';
-        loginError.style.display = 'none';
-        loginSuccess.style.display = 'none';
-
-        try {
-          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-          if (error) {
-            // display server-side message to user
-            loginError.style.display = 'block';
-            loginError.textContent = error.message || 'Erro ao autenticar';
-            showGlobalMessage(error.message || 'Erro ao autenticar', 'error');
-            loginSubmit.disabled = false;
-            loginSubmit.textContent = 'Entrar';
-            return;
-          }
-
-          // success: update profile last_active (safe upsert without role)
-          try {
-            if (data?.user?.id) {
-              await supabase.from('profiles').upsert([{
-                id: data.user.id,
-                last_active: new Date().toISOString()
-              }], { onConflict: 'id' });
-            }
-          } catch (upErr) {
-            // se falhar, mostra aviso mas não bloqueia login
-            loginSuccess.style.display = 'block';
-            loginSuccess.textContent = 'Autenticado, mas falha ao atualizar perfil (verifique configurações).';
-            showGlobalMessage('Autenticado, porém falha ao atualizar perfil.', 'error');
-            // redirect mesmo assim
-            setTimeout(() => redirectHome(), 1200);
-            return;
-          }
-
-          loginSuccess.style.display = 'block';
-          loginSuccess.textContent = 'Login realizado. Redirecionando...';
-          showGlobalMessage('Login realizado com sucesso.', 'success');
-
-          // redirect
-          setTimeout(() => redirectHome(), 700);
-        } catch (err) {
-          // unexpected error
-          loginError.style.display = 'block';
-          loginError.textContent = 'Erro inesperado. Tente novamente.';
-          showGlobalMessage('Erro inesperado. Veja detalhes no console (se houver).', 'error');
-          loginSubmit.disabled = false;
-          loginSubmit.textContent = 'Entrar';
-        }
-      });
-
-      // SIGNUP submit
+      /* ====================
+         SIGNUP FLOW (ajustado)
+         1) cria profile pendente (sem auth_id) via INSERT (anon permitted by policy)
+         2) chama supabase.auth.signUp({email,password})
+         3) se signUp retornar user.id -> atualiza profiles set auth_id = user.id
+            caso necessário trigger no DB fará o link quando o user efetivamente for criado (confirm e-mail)
+      ==================== */
       signupForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        clearFieldErrors();
+        clearSignErrors();
 
         const nome = document.getElementById('signupNome').value.trim();
         const dataNascimento = document.getElementById('signupNascimento').value;
-        const email = document.getElementById('signupEmail').value.trim();
+        const email = document.getElementById('signupEmail').value.trim().toLowerCase();
         const password = document.getElementById('signupPassword').value;
 
-        // client validation
         let hasError = false;
-        if (!nome) { signupNomeError.style.display='block'; signupNomeError.textContent = 'Informe seu nome'; hasError = true; }
-        if (!dataNascimento) { signupNascimentoError.style.display='block'; signupNascimentoError.textContent = 'Informe data de nascimento'; hasError = true; }
-
+        if (!nome) { signupNomeError.style.display='block'; signupNomeError.textContent='Informe seu nome'; hasError = true; }
+        if (!dataNascimento) { signupNascimentoError.style.display='block'; signupNascimentoError.textContent='Informe sua data de nascimento'; hasError = true; }
         const emailErr = validateEmail(email);
         if (emailErr) { signupEmailError.style.display='block'; signupEmailError.textContent = emailErr; hasError = true; }
         const passErr = validatePassword(password);
         if (passErr) { signupPasswordError.style.display='block'; signupPasswordError.textContent = passErr; hasError = true; }
 
         if (hasError) {
-          showGlobalMessage('Corrija os campos destacados e tente novamente.', 'error');
+          signupError.style.display='block';
+          signupError.textContent = 'Corrija os campos destacados.';
           return;
         }
 
+        // 1) cria profile pendente (sem auth_id). Usamos upsert para evitar duplos inserts por reload.
         signupSubmit.disabled = true;
         signupSubmit.textContent = 'Criando...';
-        signupError.style.display = 'none';
-        signupSuccess.style.display = 'none';
-
         try {
-          // call supabase signup (only email + password)
-          const { data, error } = await supabase.auth.signUp({ email: email, password });
+          const profileRow = {
+            email,
+            nome,
+            data_nascimento: dataNascimento,
+            role: 'user'
+          };
+
+          // upsert by email (anon allowed per policy)
+          const { error: upsertErr } = await supabase
+            .from('profiles')
+            .upsert([profileRow], { onConflict: 'email' });
+
+          if (upsertErr) {
+            // se RLS bloquear, exibe ao usuário e aborta
+            signupError.style.display='block';
+            signupError.textContent = upsertErr.message || 'Erro ao salvar perfil (RLS?)';
+            signupSubmit.disabled = false;
+            signupSubmit.textContent = 'Criar conta';
+            return;
+          }
+        } catch (err) {
+          signupError.style.display='block';
+          signupError.textContent = 'Erro ao salvar pré-perfil. Tente novamente.';
+          signupSubmit.disabled = false;
+          signupSubmit.textContent = 'Criar conta';
+          return;
+        }
+
+        // 2) chama signUp
+        try {
+          const { data, error } = await supabase.auth.signUp({ email, password });
 
           if (error) {
-            // show server error message
-            signupError.style.display = 'block';
+            signupError.style.display='block';
             signupError.textContent = error.message || 'Erro ao criar conta';
-            showGlobalMessage(error.message || 'Erro ao criar conta', 'error');
             signupSubmit.disabled = false;
             signupSubmit.textContent = 'Criar conta';
             return;
           }
 
-          // If user created immediately (rare if email confirmation off), try to upsert profile
+          // 3) se retornou user (fluxo sem confirmação de email), vinculamos o profile
           if (data?.user?.id) {
             try {
-              await supabase.from('profiles').upsert([{
-                id: data.user.id,
-                nome: nome || null,
-                data_nascimento: dataNascimento || null,
-                last_active: new Date().toISOString()
-              }], { onConflict: 'id' });
-            } catch (upErr) {
-              // upsert fail: show message but do not expose internals
-              signupSuccess.style.display = 'block';
-              signupSuccess.textContent = 'Conta criada — verifique seu e-mail. (Falha ao criar profile autom.)';
-              showGlobalMessage('Conta criada. Verifique seu e-mail para confirmar. (profile não criado automaticamente)', 'success');
-              setTimeout(() => redirectHome(), 1500);
+              await supabase.from('profiles').update({ auth_id: data.user.id }).eq('email', email);
+            } catch (linkErr) {
+              // falha para linkar não bloqueia o usuário, mas avisa
+              signupSuccess.style.display='block';
+              signupSuccess.textContent = 'Conta criada — verifique seu e-mail. (Falha ao vincular profile automaticamente)';
+              setTimeout(() => window.location.href = 'index.html', 1200);
               return;
             }
-
-            // profile created successfully
-            signupSuccess.style.display = 'block';
+            signupSuccess.style.display='block';
             signupSuccess.textContent = 'Conta criada com sucesso! Redirecionando...';
-            showGlobalMessage('Conta criada. Verifique seu e-mail para confirmar antes de entrar.', 'success');
-            setTimeout(() => redirectHome(), 1000);
+            setTimeout(() => window.location.href = 'index.html', 900);
             return;
           }
 
-          // If data.user is null (email confirmation flow), inform the user
-          signupSuccess.style.display = 'block';
+          // fluxo com confirmação: informamos ao usuário que precisa confirmar e-mail
+          signupSuccess.style.display='block';
           signupSuccess.textContent = 'Conta registrada — verifique seu e-mail para confirmar.';
-          showGlobalMessage('Conta criada. Verifique seu e-mail para confirmar antes de entrar.', 'success');
           signupSubmit.disabled = false;
           signupSubmit.textContent = 'Criar conta';
         } catch (err) {
-          signupError.style.display = 'block';
-          signupError.textContent = 'Erro inesperado. Tente novamente.';
-          showGlobalMessage('Erro inesperado ao criar conta.', 'error');
+          signupError.style.display='block';
+          signupError.textContent = 'Erro inesperado ao criar conta.';
           signupSubmit.disabled = false;
           signupSubmit.textContent = 'Criar conta';
         }
       });
+
+      /* ====================
+         LOGIN FLOW
+         - autentica
+         - vincula profile caso exista profile pendente (email) e auth_id ainda nulo
+         - atualiza last_active
+      ==================== */
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearLoginErrors();
+
+        const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+        const password = document.getElementById('loginPassword').value;
+        const emailErr = validateEmail(email);
+        const passErr = validatePassword(password);
+        if (emailErr) { loginEmailError.style.display='block'; loginEmailError.textContent = emailErr; }
+        if (passErr) { loginPasswordError.style.display='block'; loginPasswordError.textContent = passErr; }
+        if (emailErr || passErr) {
+          loginError.style.display='block';
+          loginError.textContent = 'Corrija os campos e tente novamente.';
+          return;
+        }
+
+        loginSubmit.disabled = true;
+        loginSubmit.textContent = 'Entrando...';
+
+        try {
+          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+          if (error) {
+            loginError.style.display='block';
+            loginError.textContent = error.message || 'Erro ao autenticar';
+            loginSubmit.disabled = false;
+            loginSubmit.textContent = 'Entrar';
+            return;
+          }
+
+          const userId = data?.user?.id;
+          // Tenta vincular profile pendente (caso o trigger não tenha feito)
+          try {
+            if (userId) {
+              // atualiza profile: set auth_id where email = user.email and auth_id is null
+              await supabase.from('profiles').update({ auth_id: userId, last_active: new Date().toISOString() }).eq('email', email).is('auth_id', null);
+            } else {
+              // se data.user for null (raro), apenas tenta atualizar por email
+              await supabase.from('profiles').update({ last_active: new Date().toISOString() }).eq('email', email);
+            }
+          } catch (pErr) {
+            // não bloqueia login, apenas mostra aviso
+            console.warn('Falha ao vincular/atualizar profile:', pErr);
+          }
+
+          loginSuccess.style.display='block';
+          loginSuccess.textContent = 'Login efetuado — redirecionando...';
+          setTimeout(() => window.location.href = 'index.html', 700);
+        } catch (err) {
+          loginError.style.display='block';
+          loginError.textContent = 'Erro inesperado no login.';
+          loginSubmit.disabled = false;
+          loginSubmit.textContent = 'Entrar';
+        }
+      });
+
     });
   </script>
 </body>
