@@ -7,9 +7,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root{
-      --bg:#0f1724; /* deep navy */
+      --bg:#0f1724;
       --card:#0b1220;
-      --accent:#06b6d4; /* teal */
+      --accent:#06b6d4;
       --muted:#94a3b8;
       --glass: rgba(255,255,255,0.04);
       --maxw: 1200px;
@@ -32,7 +32,6 @@
     nav{display:flex;gap:18px;align-items:center}
     nav a{color:var(--muted);text-decoration:none;font-weight:600}
     .btn{background:linear-gradient(90deg,var(--accent),#7c3aed);border:none;padding:10px 16px;border-radius:10px;color:#061226;font-weight:700;cursor:pointer}
-    /* HERO */
     .hero{display:grid;grid-template-columns:1fr 520px;gap:32px;align-items:center;padding:36px 0}
     .eyebrow{display:inline-block;padding:6px 10px;background:var(--glass);border-radius:999px;color:var(--accent);font-weight:700;font-size:13px}
     h1{font-size:44px;margin:12px 0 8px}
@@ -42,7 +41,6 @@
     .mock{background:linear-gradient(180deg,#082033 0%, #062033 100%);border-radius:18px;padding:22px;height:100%;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 30px rgba(2,6,23,0.7)}
     .product-mock{width:100%;max-width:420px;border-radius:12px;overflow:hidden}
     .badge{display:inline-block;padding:6px 8px;background:rgba(6,182,212,0.12);color:var(--accent);border-radius:8px;font-weight:700;font-size:13px}
-    /* PRODUCTS */
     section{padding:48px 0}
     .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
     .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:16px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
@@ -51,11 +49,9 @@
     .features{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:24px}
     .feature{background:var(--glass);padding:14px;border-radius:10px;text-align:center}
     .feature svg{display:block;margin:0 auto 8px}
-    /* testimonials */
     .testimonials{display:flex;gap:12px}
     .test{background:rgba(255,255,255,0.02);padding:16px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
     footer{border-top:1px solid rgba(255,255,255,0.03);padding:28px 0;margin-top:26px;color:var(--muted)}
-    /* responsive */
     @media(max-width:980px){
       .hero{grid-template-columns:1fr}
       .grid{grid-template-columns:repeat(2,1fr)}
@@ -222,33 +218,51 @@
     </footer>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script>
     document.getElementById('year').textContent = new Date().getFullYear();
 
     function addToCart(name, price){
-      // placeholder — aqui você integraria com carrinho/analítica
       alert(name + ' adicionado ao carrinho — R$ ' + price.toFixed(2));
     }
 
-    async function subscribe(e){
-    e.preventDefault();
+    const supabaseUrl = 'https://xqsuvwagygwkkugjqgpu.supabase.co';
+    const supabaseKey = 'sb_publishable__lu67DW_OZJ_kbIw_aY3-Q_AI-DQvH1';
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-    const email = document.getElementById('email').value;
-
-    const res = await fetch('https://meu-backend.onrender.com/subscribe', {
-     method: 'POST',
-     headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-    });
-
-    if (res.ok) {
-     alert('Inscrição realizada com sucesso!');
-     e.target.reset();
-    } else {
-    alert('Erro ao salvar email');
-     }
+    function showAlert(msg){
+      try { alert(msg); } catch(e) { console.log(msg); }
     }
 
+    async function subscribe(e){
+      e.preventDefault();
+      const emailInput = document.getElementById('email');
+      const email = (emailInput.value || '').trim();
+
+      // validação simples
+      if (!email) { showAlert('Informe um email válido.'); return; }
+      const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!re.test(email)) { showAlert('Email inválido.'); return; }
+
+      // desabilita botão enquanto processa
+      const btn = e.target.querySelector('button[type="submit"]');
+      if (btn) btn.disabled = true;
+
+      const { error } = await supabase
+        .from('respostas')
+        .insert([{ nome: 'Newsletter', email }]);
+
+      if (error) {
+        console.error(error);
+        showAlert('Erro ao salvar email. Veja o console para detalhes.');
+      } else {
+        showAlert('Inscrição realizada com sucesso!');
+        e.target.reset();
+      }
+
+      if (btn) btn.disabled = false;
+    }
   </script>
 </body>
 </html>
