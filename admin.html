@@ -21,15 +21,15 @@
   <div id="info" style="margin-bottom:12px" class="card">
     <strong>Total usuários:</strong> <span id="totalUsers">—</span> &nbsp; | &nbsp;
     <strong>Usuários online (15min):</strong> <span id="onlineUsers">—</span>
-    <button class="btn" id="logoutBtn" style="float:right">Logout</button>
+    <button class="btn" id="logoutBtn" style="float:right" type="button">Logout</button>
   </div>
 
   <div class="card">
     <div class="controls">
       <label>Data nasc. início: <input id="start" type="date"></label>
       <label>Data nasc. fim: <input id="end" type="date"></label>
-      <button class="btn" onclick="loadData()">Filtrar</button>
-      <button class="btn" onclick="clearFilters()">Limpar</button>
+      <button class="btn" id="filterBtn" type="button">Filtrar</button>
+      <button class="btn" id="clearBtn" type="button">Limpar</button>
     </div>
 
     <table id="tbl">
@@ -42,70 +42,63 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const SUPABASE_URL = 'https://xqsuvwagygwkkugjqgpu.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable__lu67DW_OZJ_kbIw_aY3-Q_AI-DQvH1';
+    document.addEventListener('DOMContentLoaded', () => {
+      const SUPABASE_URL = 'https://xqsuvwagygwkkugjqgpu.supabase.co';
+      const SUPABASE_KEY = 'sb_publishable__lu67DW_OZJ_kbIw_aY3-Q_AI-DQvH1';
+      if (!window.supabaseClient) window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const supabase = window.supabaseClient;
 
-    if (!window.supabaseClient) {
-      window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    }
-    const supabase = window.supabaseClient;
-
-    document.getElementById('logoutBtn').addEventListener('click', async () => {
-      await supabase.auth.signOut();
-      window.location.href = '/';
-    });
-
-    async function ensureAdmin() {
-      const { data } = await supabase.auth.getUser();
-      const user = data.user;
-      if (!user) { alert('Faça login'); window.location.href = 'login.html'; return false; }
-
-      const { data: profile, error } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-      if (error || !profile) { alert('Perfil não encontrado'); window.location.href = '/'; return false; }
-      if (profile.role !== 'admin') { alert('Acesso negado'); window.location.href = '/'; return false; }
-      return true;
-    }
-
-    function escapeHtml(s){ return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
-
-    async function loadData() {
-      const start = document.getElementById('start').value;
-      const end = document.getElementById('end').value;
-
-      let q = supabase.from('profiles').select('nome,data_nascimento,created_at,last_active,role').order('created_at',{ascending:false});
-
-      if (start) q = q.gte('data_nascimento', start);
-      if (end) q = q.lte('data_nascimento', end);
-
-      const { data, error } = await q;
-      if (error) { console.error(error); alert('Erro ao carregar'); return; }
-
-      const tbody = document.getElementById('tbody');
-      tbody.innerHTML = '';
-      data.forEach(u => {
-        tbody.innerHTML += `<tr>
-          <td>${escapeHtml(u.nome)}</td>
-          <td>${u.data_nascimento || ''}</td>
-          <td>${u.created_at ? new Date(u.created_at).toLocaleString() : ''}</td>
-          <td>${u.last_active ? new Date(u.last_active).toLocaleString() : ''}</td>
-          <td>${escapeHtml(u.role)}</td>
-        </tr>`;
+      document.getElementById('logoutBtn').addEventListener('click', async () => {
+        await supabase.auth.signOut();
+        window.location.href = '/';
       });
 
-      document.getElementById('totalUsers').textContent = data.length;
+      async function ensureAdmin() {
+        const { data } = await supabase.auth.getUser();
+        const user = data.user;
+        if (!user) { alert('Faça login'); window.location.href = 'login.html'; return false; }
+        const { data: profile, error } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+        if (error || !profile) { alert('Perfil não encontrado'); window.location.href = '/'; return false; }
+        if (profile.role !== 'admin') { alert('Acesso negado'); window.location.href = '/'; return false; }
+        return true;
+      }
 
-      const fifteenAgo = new Date(Date.now() - 15*60*1000).toISOString();
-      const { data: online, error: onlineErr } = await supabase.from('profiles').select('id').gt('last_active', fifteenAgo);
-      document.getElementById('onlineUsers').textContent = onlineErr ? '—' : (online||[]).length;
-    }
+      function escapeHtml(s){ return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
 
-    function clearFilters(){ document.getElementById('start').value=''; document.getElementById('end').value=''; loadData(); }
+      async function loadData() {
+        const start = document.getElementById('start').value;
+        const end = document.getElementById('end').value;
+        let q = supabase.from('profiles').select('nome,data_nascimento,created_at,last_active,role').order('created_at',{ascending:false});
+        if (start) q = q.gte('data_nascimento', start);
+        if (end) q = q.lte('data_nascimento', end);
+        const { data, error } = await q;
+        if (error) { console.error(error); alert('Erro ao carregar'); return; }
+        const tbody = document.getElementById('tbody');
+        tbody.innerHTML = '';
+        data.forEach(u => {
+          tbody.innerHTML += `<tr>
+            <td>${escapeHtml(u.nome)}</td>
+            <td>${u.data_nascimento || ''}</td>
+            <td>${u.created_at ? new Date(u.created_at).toLocaleString() : ''}</td>
+            <td>${u.last_active ? new Date(u.last_active).toLocaleString() : ''}</td>
+            <td>${escapeHtml(u.role)}</td>
+          </tr>`;
+        });
+        document.getElementById('totalUsers').textContent = data.length;
+        const fifteenAgo = new Date(Date.now() - 15*60*1000).toISOString();
+        const { data: online, error: onlineErr } = await supabase.from('profiles').select('id').gt('last_active', fifteenAgo);
+        document.getElementById('onlineUsers').textContent = onlineErr ? '—' : (online||[]).length;
+      }
 
-    (async () => {
-      const ok = await ensureAdmin();
-      if (!ok) return;
-      await loadData();
-    })();
+      document.getElementById('filterBtn').addEventListener('click', loadData);
+      document.getElementById('clearBtn').addEventListener('click', () => { document.getElementById('start').value=''; document.getElementById('end').value=''; loadData(); });
+
+      (async () => {
+        const ok = await ensureAdmin();
+        if (!ok) return;
+        await loadData();
+      })();
+    });
   </script>
 </body>
 </html>

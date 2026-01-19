@@ -32,7 +32,6 @@
       <div id="tabSignup" class="tab" role="tab" tabindex="0">Criar conta</div>
     </div>
 
-    <!-- LOGIN -->
     <form id="loginForm" autocomplete="on" novalidate>
       <label for="loginEmail">E-mail</label>
       <input id="loginEmail" type="email" required>
@@ -43,7 +42,6 @@
       <div class="small">Ou <span id="openSignup" class="link">crie sua conta</span></div>
     </form>
 
-    <!-- SIGNUP -->
     <form id="signupForm" style="display:none" autocomplete="on" novalidate>
       <label for="signupNome">Nome completo</label>
       <input id="signupNome" type="text" required>
@@ -65,13 +63,9 @@
     document.addEventListener('DOMContentLoaded', () => {
       const SUPABASE_URL = 'https://xqsuvwagygwkkugjqgpu.supabase.co';
       const SUPABASE_KEY = 'sb_publishable__lu67DW_OZJ_kbIw_aY3-Q_AI-DQvH1';
-
-      if (!window.supabaseClient) {
-        window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      }
+      if (!window.supabaseClient) window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       const supabase = window.supabaseClient;
 
-      // elements
       const tabLogin = document.getElementById('tabLogin');
       const tabSignup = document.getElementById('tabSignup');
       const loginForm = document.getElementById('loginForm');
@@ -114,12 +108,9 @@
         loginError.style.display = 'none';
         const email = document.getElementById('loginEmail').value.trim();
         const password = document.getElementById('loginPassword').value;
-
         loginSubmit.disabled = true;
         loginSubmit.textContent = 'Entrando...';
-
         const { data, error } = await supabase.auth.signInWithPassword({email,password});
-
         if (error) {
           loginError.textContent = error.message || 'Erro ao logar';
           loginError.style.display = '';
@@ -127,16 +118,9 @@
           loginSubmit.textContent = 'Entrar';
           return;
         }
-
         const user = data.user;
         if (user) {
-          // upsert last_active and ensure profile exists
-          await supabase.from('profiles').upsert([{
-            id: user.id,
-            last_active: new Date().toISOString()
-          }], { onConflict: 'id' });
-
-          // redirect back to home
+          await supabase.from('profiles').upsert([{ id: user.id, last_active: new Date().toISOString() }], { onConflict: 'id' });
           window.location.href = '/';
         } else {
           alert('Verifique seu email para confirmar a conta. Depois faça login.');
@@ -148,18 +132,13 @@
       signupForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         signupError.style.display = 'none';
-
         const nome = document.getElementById('signupNome').value.trim();
         const dataNascimento = document.getElementById('signupNascimento').value;
         const email = document.getElementById('signupEmail').value.trim();
         const password = document.getElementById('signupPassword').value;
-
         signupSubmit.disabled = true;
         signupSubmit.textContent = 'Criando...';
-
-        // create user
         const { data: signData, error: signErr } = await supabase.auth.signUp({ email, password });
-
         if (signErr) {
           signupError.textContent = signErr.message || 'Erro ao cadastrar';
           signupError.style.display = '';
@@ -167,18 +146,9 @@
           signupSubmit.textContent = 'Criar conta';
           return;
         }
-
         const user = signData.user;
         if (user) {
-          // immediately create profile
-          const { error: pErr } = await supabase.from('profiles').insert([{
-            id: user.id,
-            nome,
-            data_nascimento: dataNascimento,
-            role: 'user',
-            last_active: new Date().toISOString()
-          }]);
-
+          const { error: pErr } = await supabase.from('profiles').insert([{ id: user.id, nome, data_nascimento: dataNascimento, role: 'user', last_active: new Date().toISOString() }]);
           if (pErr) {
             console.error(pErr);
             signupError.textContent = 'Erro ao criar perfil (veja console)';
@@ -187,12 +157,9 @@
             signupSubmit.textContent = 'Criar conta';
             return;
           }
-
-          // redirect logged in
           window.location.href = '/';
           return;
         }
-
         alert('Conta criada! Verifique seu e-mail para confirmar antes de entrar.');
         window.location.href = '/';
       });
