@@ -8,196 +8,200 @@
   <style>
     :root{--bg:#07102a;--card:#0b1220;--accent:#06b6d4;--muted:#94a3b8}
     *{box-sizing:border-box}
-    body{
-      margin:0;height:100vh;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#071024 0%, #07132a 70%);display:flex;align-items:center;justify-content:center;color:#e6eef8;
-    }
-    .wrap{width:100%;max-width:980px;padding:24px;display:flex;gap:28px;align-items:center;justify-content:center}
-    .hero{flex:1;display:none} /* optional illustration area - hidden for simplicity */
+    body{margin:0;height:100vh;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#071024 0%, #07132a 70%);display:flex;align-items:center;justify-content:center;color:#e6eef8}
     .card{width:420px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:28px;border-radius:14px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 12px 40px rgba(2,6,23,0.6)}
     h2{margin:0 0 14px;font-size:22px}
     .tabs{display:flex;gap:8px;margin-bottom:16px}
-    .tab{flex:1;padding:8px 10px;border-radius:8px;text-align:center;cursor:pointer;font-weight:600}
+    .tab{flex:1;padding:8px 10px;border-radius:8px;text-align:center;cursor:pointer;font-weight:600;user-select:none}
     .tab.active{background:rgba(255,255,255,0.03)}
     label{display:block;font-size:13px;color:var(--muted);margin-top:8px}
     input{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit;margin-top:6px}
     .btn{margin-top:14px;width:100%;padding:10px;border-radius:10px;border:none;background:linear-gradient(90deg,var(--accent),#7c3aed);color:#061226;font-weight:700;cursor:pointer}
     .small{font-size:13px;color:var(--muted);margin-top:10px;text-align:center}
-    .link{color:var(--accent);cursor:pointer}
-    .errors{color:#ffb4b4;margin-top:8px;font-size:14px}
-    @media(max-width:540px){ .wrap{padding:12px} .card{width:100%} }
+    .link{color:var(--accent);cursor:pointer;text-decoration:underline}
+    .errors{color:#ffb4b4;margin-top:8px;font-size:14px;display:none}
+    .center{display:flex;justify-content:center}
+    @media(max-width:540px){ .card{width:92vw} }
   </style>
 </head>
 <body>
+  <div class="card" role="region" aria-labelledby="authTitle">
+    <h2 id="authTitle">Entrar na Loja Exemplo</h2>
 
-  <div class="wrap">
-    <div class="card" role="region" aria-labelledby="authTitle">
-      <h2 id="authTitle">Entrar na Loja Exemplo</h2>
-
-      <div class="tabs">
-        <div id="tabLogin" class="tab active">Entrar</div>
-        <div id="tabSignup" class="tab">Criar conta</div>
-      </div>
-
-      <!-- LOGIN -->
-      <form id="loginForm" autocomplete="on">
-        <label for="loginEmail">E-mail</label>
-        <input id="loginEmail" type="email" required>
-        <label for="loginPassword">Senha</label>
-        <input id="loginPassword" type="password" required>
-        <div class="errors" id="loginError" role="alert" style="display:none"></div>
-        <button class="btn" type="submit" id="loginSubmit">Entrar</button>
-        <div class="small">Ou <span class="link" id="openSignup">crie sua conta</span></div>
-      </form>
-
-      <!-- SIGNUP -->
-      <form id="signupForm" style="display:none" autocomplete="on">
-        <label for="signupNome">Nome completo</label>
-        <input id="signupNome" type="text" required>
-        <label for="signupNascimento">Data de nascimento</label>
-        <input id="signupNascimento" type="date" required>
-        <label for="signupEmail">E-mail</label>
-        <input id="signupEmail" type="email" required>
-        <label for="signupPassword">Senha (mín 6 caracteres)</label>
-        <input id="signupPassword" type="password" minlength="6" required>
-        <div class="errors" id="signupError" role="alert" style="display:none"></div>
-        <button class="btn" type="submit" id="signupSubmit">Criar conta</button>
-        <div class="small">Já tem conta? <span class="link" id="openLogin">Entrar</span></div>
-      </form>
-
+    <div class="tabs" role="tablist">
+      <div id="tabLogin" class="tab active" role="tab" tabindex="0">Entrar</div>
+      <div id="tabSignup" class="tab" role="tab" tabindex="0">Criar conta</div>
     </div>
+
+    <!-- LOGIN -->
+    <form id="loginForm" autocomplete="on" novalidate>
+      <label for="loginEmail">E-mail</label>
+      <input id="loginEmail" type="email" required>
+      <label for="loginPassword">Senha</label>
+      <input id="loginPassword" type="password" required>
+      <div id="loginError" class="errors" role="alert"></div>
+      <button class="btn" type="submit" id="loginSubmit">Entrar</button>
+      <div class="small center">Ou <span id="openSignup" class="link">crie sua conta</span></div>
+    </form>
+
+    <!-- SIGNUP -->
+    <form id="signupForm" style="display:none" autocomplete="on" novalidate>
+      <label for="signupNome">Nome completo</label>
+      <input id="signupNome" type="text" required>
+      <label for="signupNascimento">Data de nascimento</label>
+      <input id="signupNascimento" type="date" required>
+      <label for="signupEmail">E-mail</label>
+      <input id="signupEmail" type="email" required>
+      <label for="signupPassword">Senha (mín 6 caracteres)</label>
+      <input id="signupPassword" type="password" minlength="6" required>
+      <div id="signupError" class="errors" role="alert"></div>
+      <button class="btn" type="submit" id="signupSubmit">Criar conta</button>
+      <div class="small center">Já tem conta? <span id="openLogin" class="link">Entrar</span></div>
+    </form>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script>
-    const SUPABASE_URL = 'https://xqsuvwagygwkkugjqgpu.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable__lu67DW_OZJ_kbIw_aY3-Q_AI-DQvH1';
+    document.addEventListener('DOMContentLoaded', () => {
+      const SUPABASE_URL = 'https://xqsuvwagygwkkugjqgpu.supabase.co';
+      const SUPABASE_KEY = 'sb_publishable__lu67DW_OZJ_kbIw_aY3-Q_AI-DQvH1';
 
-    if (!window.supabaseClient) {
-      window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    }
-    const supabase = window.supabaseClient;
+      if (!window.supabaseClient) {
+        window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      }
+      const supabase = window.supabaseClient;
 
-    // tabs
-    const tabLogin = document.getElementById('tabLogin');
-    const tabSignup = document.getElementById('tabSignup');
-    const loginForm = document.getElementById('loginForm');
-    const signupForm = document.getElementById('signupForm');
-    const openSignup = document.getElementById('openSignup');
-    const openLogin = document.getElementById('openLogin');
-    const loginError = document.getElementById('loginError');
-    const signupError = document.getElementById('signupError');
+      // elements
+      const tabLogin = document.getElementById('tabLogin');
+      const tabSignup = document.getElementById('tabSignup');
+      const loginForm = document.getElementById('loginForm');
+      const signupForm = document.getElementById('signupForm');
+      const openSignup = document.getElementById('openSignup');
+      const openLogin = document.getElementById('openLogin');
+      const loginError = document.getElementById('loginError');
+      const signupError = document.getElementById('signupError');
+      const loginSubmit = document.getElementById('loginSubmit');
+      const signupSubmit = document.getElementById('signupSubmit');
 
-    function showLogin() {
-      tabLogin.classList.add('active');
-      tabSignup.classList.remove('active');
-      loginForm.style.display = '';
-      signupForm.style.display = 'none';
-      loginError.style.display = 'none';
-      signupError.style.display = 'none';
-    }
-    function showSignup() {
-      tabSignup.classList.add('active');
-      tabLogin.classList.remove('active');
-      loginForm.style.display = 'none';
-      signupForm.style.display = '';
-      loginError.style.display = 'none';
-      signupError.style.display = 'none';
-    }
-
-    tabLogin.addEventListener('click', showLogin);
-    tabSignup.addEventListener('click', showSignup);
-    openSignup.addEventListener('click', showSignup);
-    openLogin.addEventListener('click', showLogin);
-
-    // LOGIN handler
-    loginForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      loginError.style.display = 'none';
-      const email = document.getElementById('loginEmail').value.trim();
-      const password = document.getElementById('loginPassword').value;
-
-      const btn = document.getElementById('loginSubmit');
-      btn.disabled = true; btn.textContent = 'Entrando...';
-
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-      if (error) {
-        loginError.textContent = error.message || 'Erro ao logar';
-        loginError.style.display = '';
-        btn.disabled = false; btn.textContent = 'Entrar';
-        return;
+      // tab functions
+      function showLogin() {
+        tabLogin.classList.add('active');
+        tabSignup.classList.remove('active');
+        loginForm.style.display = '';
+        signupForm.style.display = 'none';
+        loginError.style.display = 'none';
+        signupError.style.display = 'none';
+      }
+      function showSignup() {
+        tabSignup.classList.add('active');
+        tabLogin.classList.remove('active');
+        loginForm.style.display = 'none';
+        signupForm.style.display = '';
+        loginError.style.display = 'none';
+        signupError.style.display = 'none';
       }
 
-      const user = data.user;
-      if (user) {
-        // atualiza last_active (upsert para criar profile se necessário)
-        await supabase.from('profiles').upsert([{
-          id: user.id,
-          last_active: new Date().toISOString()
-        }], { onConflict: 'id' });
+      // keyboard accessible
+      tabLogin.addEventListener('click', showLogin);
+      tabSignup.addEventListener('click', showSignup);
+      tabLogin.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' ') showLogin(); });
+      tabSignup.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' ') showSignup(); });
 
-        // redirect back to home
-        location.href = '/';
-      } else {
-        // se não tiver user (fluxo com confirmação por email), mostra mensagem
-        alert('Verifique seu email para confirmar o acesso. Depois faça login.');
-        location.href = '/';
-      }
-    });
+      // links inside forms
+      openSignup.addEventListener('click', (e) => { e.preventDefault(); showSignup(); });
+      openLogin.addEventListener('click', (e) => { e.preventDefault(); showLogin(); });
 
-    // SIGNUP handler
-    signupForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      signupError.style.display = 'none';
+      // LOGIN handler
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        loginError.style.display = 'none';
+        const email = document.getElementById('loginEmail').value.trim();
+        const password = document.getElementById('loginPassword').value;
 
-      const nome = document.getElementById('signupNome').value.trim();
-      const dataNascimento = document.getElementById('signupNascimento').value;
-      const email = document.getElementById('signupEmail').value.trim();
-      const password = document.getElementById('signupPassword').value;
+        loginSubmit.disabled = true;
+        loginSubmit.textContent = 'Entrando...';
 
-      const btn = document.getElementById('signupSubmit');
-      btn.disabled = true; btn.textContent = 'Criando...';
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-      // criar no Auth
-      const { data: signData, error: signErr } = await supabase.auth.signUp({
-        email, password
-      });
-
-      if (signErr) {
-        signupError.textContent = signErr.message || 'Erro ao cadastrar';
-        signupError.style.display = '';
-        btn.disabled = false; btn.textContent = 'Criar conta';
-        return;
-      }
-
-      // Em alguns projetos, signUp retorna usuário direto (sem confirmação). Se user existir, cria profile.
-      const user = signData.user;
-      if (user) {
-        const { error: pErr } = await supabase.from('profiles').insert([{
-          id: user.id,
-          nome,
-          data_nascimento: dataNascimento,
-          role: 'user',
-          last_active: new Date().toISOString()
-        }]);
-
-        if (pErr) {
-          console.error(pErr);
-          signupError.textContent = 'Erro ao criar perfil (veja console)';
-          signupError.style.display = '';
-          btn.disabled = false; btn.textContent = 'Criar conta';
+        if (error) {
+          loginError.textContent = error.message || 'Erro ao logar';
+          loginError.style.display = '';
+          loginSubmit.disabled = false;
+          loginSubmit.textContent = 'Entrar';
           return;
         }
 
-        // redirect to home logged in
-        location.href = '/';
-        return;
-      }
+        const user = data.user;
+        if (user) {
+          // upsert last_active and ensure profile exists
+          await supabase.from('profiles').upsert([{
+            id: user.id,
+            last_active: new Date().toISOString()
+          }], { onConflict: 'id' });
 
-      // Se não receber user (fluxo com confirmação por e-mail)
-      alert('Conta criada! Verifique seu e-mail para confirmar a conta antes de entrar.');
-      location.href = '/';
+          // redirect back to home (index.html)
+          window.location.href = '/';
+        } else {
+          // fluxo com confirmação por email
+          alert('Verifique seu email para confirmar a conta. Depois faça login.');
+          window.location.href = '/';
+        }
+      });
+
+      // SIGNUP handler
+      signupForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        signupError.style.display = 'none';
+
+        const nome = document.getElementById('signupNome').value.trim();
+        const dataNascimento = document.getElementById('signupNacimiento') ? document.getElementById('signupNacimiento').value : document.getElementById('signupNascimento').value;
+        const email = document.getElementById('signupEmail').value.trim();
+        const password = document.getElementById('signupPassword').value;
+
+        signupSubmit.disabled = true;
+        signupSubmit.textContent = 'Criando...';
+
+        // create user
+        const { data: signData, error: signErr } = await supabase.auth.signUp({ email, password });
+
+        if (signErr) {
+          signupError.textContent = signErr.message || 'Erro ao cadastrar';
+          signupError.style.display = '';
+          signupSubmit.disabled = false;
+          signupSubmit.textContent = 'Criar conta';
+          return;
+        }
+
+        const user = signData.user;
+        if (user) {
+          // immediately create profile
+          const { error: pErr } = await supabase.from('profiles').insert([{
+            id: user.id,
+            nome,
+            data_nascimento: dataNascimento,
+            role: 'user',
+            last_active: new Date().toISOString()
+          }]);
+
+          if (pErr) {
+            console.error(pErr);
+            signupError.textContent = 'Erro ao criar perfil (veja console)';
+            signupError.style.display = '';
+            signupSubmit.disabled = false;
+            signupSubmit.textContent = 'Criar conta';
+            return;
+          }
+
+          // redirect logged in
+          window.location.href = '/';
+          return;
+        }
+
+        // if user not returned (email confirm flow)
+        alert('Conta criada! Verifique seu e-mail para confirmar a conta antes de entrar.');
+        window.location.href = '/';
+      });
     });
   </script>
 </body>
