@@ -75,33 +75,21 @@
   <!-- Supabase SDK v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+  <!-- Script completo e seguro -->
   <script>
-  (function(){
-  // ---------- CONFIG ----------
+  // ========== CONFIG ==========
   const SUPABASE_URL = 'https://atjeaedbncwcgkwfnrmr.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_lXnKm0nBA8HC-6clDXTAYw_f8-xXiNe'; // anon/public key
-  // create client once (global)
   if (!window.supabaseClient) {
     if (!window.supabase || !window.supabase.createClient) {
       console.error('Supabase SDK não carregado. Verifique o CDN.');
-      // Não lançar erro aqui para não interromper a execução da página
-      // (isso fazia com que os handlers de UI não fossem registrados).
-      // Fornecemos um stub mínimo que retorna erros informativos ao ser usado.
-      window.supabaseClient = {
-        auth: {
-          onAuthStateChange: () => ({ data: null }),
-          signUp: async () => ({ data: null, error: { message: 'Supabase SDK não inicializado', status: 500 } }),
-          signInWithPassword: async () => ({ data: null, error: { message: 'Supabase SDK não inicializado', status: 500 } })
-        },
-        from: () => ({ insert: async () => ({ data: null, error: { message: 'Supabase SDK não inicializado' } }), upsert: async () => ({ data: null, error: { message: 'Supabase SDK não inicializado' } }), update: async () => ({ data: null, error: { message: 'Supabase SDK não inicializado' } }), select: async () => ({ data: null, error: { message: 'Supabase SDK não inicializado' } }) })
-      };
-    } else {
-      window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      throw new Error('Supabase SDK not loaded');
     }
+    window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   }
   const supabase = window.supabaseClient;
 
-  // ---------- DOM refs ----------
+  // ========== DOM refs ==========
   const loginForm = document.getElementById('loginForm');
   const signupForm = document.getElementById('signupForm');
   const openSignup = document.getElementById('openSignup');
@@ -115,11 +103,11 @@
   const loginSuccess = document.getElementById('loginSuccess');
   const loginError = document.getElementById('loginError');
 
-  // ---------- helpers ----------
+  // ========== Helpers ==========
   function showSignup(){ signupForm.style.display=''; loginForm.style.display='none'; }
   function showLogin(){ signupForm.style.display='none'; loginForm.style.display=''; }
-  openSignup.addEventListener('click', (e)=>{ e.preventDefault(); showSignup(); });
-  openLogin.addEventListener('click', (e)=>{ e.preventDefault(); showLogin(); });
+  if (openSignup) openSignup.addEventListener('click', (e)=>{ e.preventDefault(); showSignup(); });
+  if (openLogin) openLogin.addEventListener('click', (e)=>{ e.preventDefault(); showLogin(); });
 
   function validateEmail(email){
     if(!email) return 'Informe um e-mail';
@@ -138,7 +126,7 @@
     catch(e){ console.error('DB ERROR:', ctx, err); }
   }
 
-  // ---------- localStorage pending profile helpers ----------
+  // ========== localStorage helpers (pending profile + error mark) ==========
   function savePendingProfileToStorage(email, fields){
     if(!email) return;
     try { localStorage.setItem('pending_profile_' + email.toLowerCase(), JSON.stringify(fields)); }
@@ -155,18 +143,29 @@
     catch(e){}
   }
 
-  // ---------- profile manipulation functions (logger-like) ----------
-  async function insertProfileManual({ id, email, nome=null, data_nascimento=null, role='user' }) {
-    if (!id) throw new Error('id is required for insertProfileManual');
-    if (!email) throw new Error('email is required for insertProfileManual');
-    const row = { id, email: (email||'').toLowerCase(), nome, data_nascimento, role };
-    const { data, error } = await supabase.from('profiles').insert([row]).select().single();
-    if (error) {
-      const e = new Error(error.message || 'Insert profile failed');
-      e._supabase = error;
-      throw e;
-    }
-    return data;
+  function markProfileErrorOnce(uid){
+    if(!uid) return;
+    const key = 'profile_error_mark_' + uid;
+    const data = { ts: Date.now() };
+    try { localStorage.setItem(key, JSON.stringify(data)); } catch(e){/*ignore*/}
+  }
+  function isProfileErrorMarked(uid){
+    if(!uid) return false;
+    try {
+      const key = 'profile_error_mark_' + uid;
+      const raw = localStorage.getItem(key);
+      if(!raw) return false;
+      const obj = JSON.parse(raw);
+      return (Date.now() - (obj.ts||0)) < (10 * 60 * 1000); // 10 minutes
+    } catch(e){ return false; }
+  }
+
+  // ========== DB helpers (insert/upsert/check) ==========
+  async function profileExists(uid){
+    if(!uid) return false;
+    const { data, error } = await supabase.from('profiles').select('id').eq('id', uid).maybeSingle();
+    if (error) throw error;
+    return !!data;
   }
 
   async function upsertProfileById({ id, email, nome=null, data_nascimento=null, role='user' }) {
@@ -181,7 +180,6 @@
     return data;
   }
 
-  // fallback: insert by email only (similar to newsletter behavior). Use only if id-based insert blocked.
   async function insertProfileByEmail({ email, nome=null, data_nascimento=null, role='user' }) {
     if (!email) throw new Error('email required for insert by email');
     const payload = { email: (email||'').toLowerCase(), nome, data_nascimento, role };
@@ -194,63 +192,76 @@
     return data;
   }
 
-  // ---------- auth listener: guarantees profile when session appears ----------
+  // ensureProfileOnce: check existe -> upsert by id -> fallback insert by email -> mark error to avoid loop
+  async function ensureProfileOnce(uid, fields = {}) {
+    if(!uid) throw new Error('uid required');
+    if (isProfileErrorMarked(uid)) {
+      console.warn('Profile creation for', uid, 'is temporarily suspended (marked error).');
+      return false;
+    }
+    try {
+      const exists = await profileExists(uid);
+      if (exists) return true;
+      // try upsert by id
+      try {
+        await upsertProfileById({ id: uid, email: fields.email, nome: fields.nome, data_nascimento: fields.data_nascimento, role: 'user' });
+        return true;
+      } catch (err) {
+        logDbError('ensureProfile upsert failed', err._supabase ?? err);
+        // fallback: try insert by email
+        try {
+          await insertProfileByEmail({ email: fields.email, nome: fields.nome, data_nascimento: fields.data_nascimento, role: 'user' });
+          return true;
+        } catch (err2) {
+          logDbError('ensureProfile fallback insert by email failed', err2._supabase ?? err2);
+          markProfileErrorOnce(uid);
+          return false;
+        }
+      }
+    } catch (err) {
+      console.warn('ensureProfileOnce unexpected error', err);
+      markProfileErrorOnce(uid);
+      return false;
+    }
+  }
+
+  // ========== Auth listener (safe) ==========
   const { data: authSub } = supabase.auth.onAuthStateChange(async (event, session) => {
     try {
       if (!session?.user) return;
       const user = session.user;
       console.log('auth event', event, 'user', user?.id);
 
-      // try to apply pending profile saved at signup
+      // attempt to apply pending profile if present (only once)
       const pending = readPendingProfileFromStorage(user.email);
       if (pending) {
-        // try id-based upsert first
-        try {
-          await upsertProfileById({ id: user.id, email: user.email, nome: pending.nome, data_nascimento: pending.data_nascimento, role: 'user' });
+        const ok = await ensureProfileOnce(user.id, { email: user.email, nome: pending.nome, data_nascimento: pending.data_nascimento });
+        if (ok) {
           clearPendingProfileFromStorage(user.email);
-          console.log('Pending profile applied via upsert for', user.id);
-          return;
-        } catch (err) {
-          logDbError('auth listener upsert pending', err._supabase ?? err);
-          // fallback: try insert by email
-          try {
-            await insertProfileByEmail({ email: user.email, nome: pending.nome, data_nascimento: pending.data_nascimento, role: 'user' });
-            clearPendingProfileFromStorage(user.email);
-            console.log('Pending profile applied via insert by email for', user.email);
-            return;
-          } catch (err2) {
-            logDbError('auth listener insert by email pending', err2._supabase ?? err2);
-          }
+        } else {
+          console.warn('Could not apply pending profile for', user.id);
         }
+        // don't return; try to ensure minimal profile below as well
       }
 
-      // if no pending or failed, ensure minimal profile exists (id-based)
-      try {
-        await upsertProfileById({ id: user.id, email: user.email, role: 'user' });
-        // update last_active
-        const { error: laErr } = await supabase.from('profiles').update({ last_active: new Date().toISOString() }).eq('id', user.id);
-        if (laErr) logDbError('auth listener update last_active', laErr);
-        console.log('Profile ensured for', user.id);
-      } catch (err) {
-        logDbError('auth listener ensure profile', err._supabase ?? err);
-        // as last resort, try insert by email
-        try {
-          await insertProfileByEmail({ email: user.email, role: 'user' });
-          console.log('Profile created by email fallback for', user.email);
-        } catch (err2) {
-          logDbError('auth listener final fallback insert by email', err2._supabase ?? err2);
-        }
+      // ensure minimal profile exists
+      const ok = await ensureProfileOnce(user.id, { email: user.email });
+      if (ok) {
+        // optional: update last_active (non-blocking)
+        const { error } = await supabase.from('profiles').update({ last_active: new Date().toISOString() }).eq('id', user.id);
+        if (error) logDbError('auth listener update last_active', error);
+      } else {
+        console.warn('Failed to ensure profile for', user.id);
       }
-    } catch(e) {
+    } catch (e) {
       console.error('auth listener unexpected error', e);
     }
   });
 
-  // ---------- SIGNUP flow: create auth user and manually save profile ----------
-  // Signup form handler
+  // ========== Signup handler ==========
   signupForm.addEventListener('submit', async (ev) => {
     ev.preventDefault();
-    // clear UI messages
+    // clear UI
     document.getElementById('signupNomeError').style.display='none';
     document.getElementById('signupNascimentoError').style.display='none';
     document.getElementById('signupEmailError').style.display='none';
@@ -262,7 +273,6 @@
     const email = (document.getElementById('signupEmail').value || '').trim().toLowerCase();
     const password = document.getElementById('signupPassword').value;
 
-    // basic validations
     let hasError = false;
     if (!nome) { document.getElementById('signupNomeError').style.display='block'; document.getElementById('signupNomeError').textContent='Informe seu nome'; hasError = true; }
     if (!dataNascimento) { document.getElementById('signupNascimentoError').style.display='block'; document.getElementById('signupNascimentoError').textContent='Informe sua data de nascimento'; hasError = true; }
@@ -281,77 +291,43 @@
     signupSubmit.textContent = 'Criando...';
 
     try {
-      // Save pending profile to apply later if needed
+      // save pending (in case signUp requires email confirmation)
       savePendingProfileToStorage(email, { nome, data_nascimento: dataNascimento, email });
 
-      // Call Supabase signUp
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      // log for debugging
-      console.log('signUp result:', data, error);
-
-      if (error) {
-        // If the SDK returns an error object, show it
-        signupError.style.display='block';
-        signupError.textContent = error.message || 'Erro ao criar conta (veja console)';
-        console.error('signUp error object:', error);
-        // If it's an internal 500 we also try to fetch raw response for debugging
-        if (error.status === 500) {
-          try {
-            const raw = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
-              body: JSON.stringify({ email, password })
-            });
-            const text = await raw.text();
-            console.warn('Raw signup response (fallback):', raw.status, text);
-          } catch (fetchErr) {
-            console.warn('Raw signup fallback fetch failed', fetchErr);
-          }
-        }
+      const res = await supabase.auth.signUp({ email, password });
+      console.log('signUp result:', res);
+      if (res.error) {
+        signupError.style.display = 'block';
+        signupError.textContent = res.error.message || 'Erro ao criar conta';
+        console.error('signUp error object:', res.error);
         signupSubmit.disabled = false;
         signupSubmit.textContent = 'Criar conta';
         return;
       }
 
-      // If signUp returned user immediately (no email confirmation required),
-      // create profile immediately (prefer id-based upsert)
-      const user = data?.user ?? null;
+      const user = res.data?.user ?? null;
       if (user) {
-        try {
-          // try upsert by id (most reliable, compatible with RLS requiring id = auth.uid())
-          await upsertProfileById({ id: user.id, email, nome, data_nascimento: dataNascimento, role: 'user' });
-          signupSuccess.style.display = 'block';
-          signupSuccess.textContent = 'Conta e perfil criados com sucesso! Redirecionando...';
-          clearPendingProfileFromStorage(email);
-          setTimeout(()=> location.href = 'index.html', 900);
+        // try ensure profile immediately
+        const ok = await ensureProfileOnce(user.id, { email, nome, data_nascimento: dataNascimento });
+        if (!ok) {
+          signupError.style.display = 'block';
+          signupError.textContent = 'Conta criada, mas falha ao salvar perfil. Veja console.';
+          signupSubmit.disabled = false;
+          signupSubmit.textContent = 'Criar conta';
           return;
-        } catch (err) {
-          logDbError('signup upsertProfileById', err._supabase ?? err);
-          // fallback: try insert by email (newsletter-like)
-          try {
-            await insertProfileByEmail({ email, nome, data_nascimento: dataNascimento, role: 'user' });
-            signupSuccess.style.display = 'block';
-            signupSuccess.textContent = 'Conta criada (profile salvo por e-mail). Redirecionando...';
-            clearPendingProfileFromStorage(email);
-            setTimeout(()=> location.href = 'index.html', 900);
-            return;
-          } catch (err2) {
-            logDbError('signup insertProfileByEmail fallback', err2._supabase ?? err2);
-            signupError.style.display = 'block';
-            signupError.textContent = 'Conta criada, mas falha ao salvar dados do perfil — veja console.';
-            signupSubmit.disabled = false;
-            signupSubmit.textContent = 'Criar conta';
-            return;
-          }
         }
+        signupSuccess.style.display = 'block';
+        signupSuccess.textContent = 'Conta e perfil criados! Redirecionando...';
+        clearPendingProfileFromStorage(email);
+        setTimeout(()=> location.href = 'index.html', 900);
+        return;
       }
 
-      // If we reach here, signUp didn't return user: usually means confirmation required.
+      // if user was not returned (confirmation required)
       signupSuccess.style.display = 'block';
-      signupSuccess.textContent = 'Conta registrada. Verifique seu e-mail para confirmar. Ao entrar, seus dados serão salvos.';
+      signupSuccess.textContent = 'Conta registrada. Verifique seu e-mail para confirmar. Ao entrar, seus dados serão aplicados.';
       signupSubmit.disabled = false;
       signupSubmit.textContent = 'Criar conta';
-
     } catch (err) {
       console.error('Unexpected signup error', err);
       signupError.style.display = 'block';
@@ -361,12 +337,12 @@
     }
   });
 
-  // ---------- LOGIN flow ----------
+  // ========== Login handler ==========
   loginForm.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     document.getElementById('loginEmailError').style.display='none';
     document.getElementById('loginPasswordError').style.display='none';
-    loginError.style.display = 'none';
+    loginError.style.display='none';
 
     const email = (document.getElementById('loginEmail').value || '').trim().toLowerCase();
     const password = document.getElementById('loginPassword').value;
@@ -384,26 +360,15 @@
     loginSubmit.textContent = 'Entrando...';
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      console.log('signIn result:', data, error);
-      if (error) {
+      const res = await supabase.auth.signInWithPassword({ email, password });
+      console.log('signIn result:', res);
+      if (res.error) {
         loginError.style.display = 'block';
-        loginError.textContent = error.message || 'Erro ao autenticar';
+        loginError.textContent = res.error.message || 'Erro ao autenticar';
         loginSubmit.disabled = false;
         loginSubmit.textContent = 'Entrar';
         return;
       }
-
-      const user = data?.user ?? null;
-      if (!user) {
-        loginError.style.display = 'block';
-        loginError.textContent = 'Login efetuado, mas usuário não retornado (verifique console).';
-        loginSubmit.disabled = false;
-        loginSubmit.textContent = 'Entrar';
-        return;
-      }
-
-      // auth listener will upsert/apply pending profile. we still redirect.
       loginSuccess.style.display = 'block';
       loginSuccess.textContent = 'Login efetuado — redirecionando...';
       setTimeout(()=> location.href = 'index.html', 700);
@@ -418,7 +383,6 @@
 
   // show login by default
   showLogin();
-  })();
   </script>
 </body>
 </html>
