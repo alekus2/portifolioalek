@@ -230,13 +230,25 @@
       alert(name + ' adicionado ao carrinho — R$ ' + price.toFixed(2));
     }
 
-    function subscribe(e){
-      e.preventDefault();
-      const email = document.getElementById('email').value;
-      // Simulação de envio — trocar por fetch() para API real
-      alert('Obrigado! A inscrição ' + email + ' foi confirmada.');
-      e.target.reset();
+    async function subscribe(e){
+    e.preventDefault();
+
+    const email = document.getElementById('email').value;
+
+    const res = await fetch('https://meu-backend.onrender.com/subscribe', {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+    });
+
+    if (res.ok) {
+     alert('Inscrição realizada com sucesso!');
+     e.target.reset();
+    } else {
+    alert('Erro ao salvar email');
+     }
     }
+
   </script>
 </body>
 </html>
