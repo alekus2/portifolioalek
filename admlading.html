@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin — Insights</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;padding:18px;background:#071024;color:#e6eef8}
+    .btn{background:#06b6d4;border:none;padding:8px 12px;border-radius:6px;color:#061226;cursor:pointer}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:8px;border:1px solid rgba(255,255,255,0.06);text-align:left}
+    .controls{display:flex;gap:8px;align-items:center}
+  </style>
+</head>
+<body>
+
+  <h1>Insights (Admin)</h1>
+  <div id="status">
+    <strong>Total usuários:</strong> <span id="totalUsers">—</span> &nbsp; | &nbsp;
+    <strong>Usuários "online" (últimos 15 min):</strong> <span id="onlineUsers">—</span>
+  </div>
+
+  <section style="margin-top:16px">
+    <div class="controls">
+      <label>Data nascimento inicial: <input id="start" type="date"></label>
+      <label>Data nascimento final: <input id="end" type="date"></label>
+      <button class="btn" onclick="loadData()">Filtrar</button>
+      <button class="btn" onclick="loadData(true)">Limpar</button>
+      <button class="btn" onclick="logout()">Logout</button>
+    </div>
+
+    <div style="margin-top:12px">
+      <table>
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Data Nascimento</th>
+            <th>Data Cadastro</th>
+            <th>Última Atividade</th>
+            <th>Role</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script>
+    const SUPABASE_URL = 'https://xqsuvwagygwkkugjqgpu.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable__lu67DW_OZJ_kbIw_aY3-Q_AI-DQvH1';
+
+    if (!window.supabaseClient) {
+      window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
+    const supabase = window.supabaseClient;
+
+    // checa se user está logado e é admin
+    async function ensureAdmin() {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData.user;
+      if (!user) {
+        alert('Você precisa estar logado');
+        location.href = 'login.html';
+        return false;
+      }
+
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (error || !profile) {
+        alert('Perfil não encontrado');
+        location.href = 'login.html';
+        return false;
+      }
+
+      if (profile.role !== 'admin') {
+        alert('Acesso negado: necessário permissão de admin');
+        location.href = '/';
+        return false;
+      }
+      return true;
+    }
+
+    // carrega os dados aplicando filtro por data de nascimento
+    async function loadData(clear=false) {
+      // se clear=true limpa filtros
+      if (clear) {
+        document.getElementById('start').value = '';
+        document.getElementById('end').value = '';
+      }
+
+      const start = document.getElementById('start').value;
+      const end = document.getElementById('end').value;
+
+      let q = supabase
+        .from('profiles')
+        .select('nome, data_nascimento, created_at, last_active, role')
+        .order('created_at', { ascending: false });
+
+      if (start) q = q.gte('data_nascimento', start);
+      if (end) q = q.lte('data_nascimento', end);
+
+      const { data, error } = await q;
+
+      if (error) {
+        console.error(error);
+        alert('Erro ao carregar dados');
+        return;
+      }
+
+      // preencher tabela
+      const tbody = document.getElementById('tbody');
+      tbody.innerHTML = '';
+      data.forEach(u => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${escapeHtml(u.nome || '')}</td>
+            <td>${u.data_nascimento || ''}</td>
+            <td>${u.created_at ? new Date(u.created_at).toLocaleString() : ''}</td>
+            <td>${u.last_active ? new Date(u.last_active).toLocaleString() : ''}</td>
+            <td>${u.role || ''}</td>
+          </tr>
+        `;
+      });
+
+      // totais
+      document.getElementById('totalUsers').textContent = data.length;
+
+      // online: contar users com last_active dentro dos últimos 15 minutos
+      const fifteenAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+      const { data: onlineData, error: onlineErr } = await supabase
+        .from('profiles')
+        .select('id')
+        .gt('last_active', fifteenAgo);
+
+      if (onlineErr) {
+        console.error(onlineErr);
+        document.getElementById('onlineUsers').textContent = '—';
+      } else {
+        document.getElementById('onlineUsers').textContent = (onlineData || []).length;
+      }
+    }
+
+    // escape simples pra evitar injeção de HTML na tabela
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'",'&#039;');
+    }
+
+    async function logout() {
+      await supabase.auth.signOut();
+      window.location.href = '/';
+    }
+
+    // inicialização
+    (async () => {
+      const ok = await ensureAdmin();
+      if (!ok) return;
+      await loadData();
+    })();
+  </script>
+</body>
+</html>
