@@ -20,6 +20,8 @@
     .small{font-size:13px;color:var(--muted);margin-top:10px;text-align:center}
     .link{color:#7dd3fc;cursor:pointer;text-decoration:underline}
     .errors{color:#ffb4b4;margin-top:8px;font-size:14px;display:none}
+    .success{color:#b6ffd9;margin-top:8px;font-size:14px;display:none}
+    .field-error{color:#ffb4b4;font-size:13px;margin-top:6px;display:none}
     @media(max-width:540px){ .card{width:92vw} }
   </style>
 </head>
@@ -32,13 +34,22 @@
       <div id="tabSignup" class="tab" role="tab" tabindex="0">Criar conta</div>
     </div>
 
+    <!-- ARIA live region para mensagens gerais -->
+    <div id="globalMsg" role="status" aria-live="polite" style="min-height:28px"></div>
+
     <!-- LOGIN -->
     <form id="loginForm" autocomplete="on" novalidate>
       <label for="loginEmail">E-mail</label>
-      <input id="loginEmail" type="email" required>
+      <input id="loginEmail" type="email" inputmode="email" autocomplete="email" required>
+      <div id="loginEmailError" class="field-error" aria-live="polite"></div>
+
       <label for="loginPassword">Senha</label>
-      <input id="loginPassword" type="password" required>
+      <input id="loginPassword" type="password" autocomplete="current-password" required>
+      <div id="loginPasswordError" class="field-error" aria-live="polite"></div>
+
       <div id="loginError" class="errors" role="alert"></div>
+      <div id="loginSuccess" class="success" role="status"></div>
+
       <button class="btn" type="submit" id="loginSubmit">Entrar</button>
       <div class="small">Ou <span id="openSignup" class="link">crie sua conta</span></div>
     </form>
@@ -46,150 +57,280 @@
     <!-- SIGNUP -->
     <form id="signupForm" style="display:none" autocomplete="on" novalidate>
       <label for="signupNome">Nome completo</label>
-      <input id="signupNome" type="text" required>
+      <input id="signupNome" type="text" autocomplete="name" required>
+      <div id="signupNomeError" class="field-error" aria-live="polite"></div>
+
       <label for="signupNascimento">Data de nascimento</label>
       <input id="signupNascimento" type="date" required>
+      <div id="signupNascimentoError" class="field-error" aria-live="polite"></div>
+
       <label for="signupEmail">E-mail</label>
-      <input id="signupEmail" type="email" required>
+      <input id="signupEmail" type="email" inputmode="email" autocomplete="email" required>
+      <div id="signupEmailError" class="field-error" aria-live="polite"></div>
+
       <label for="signupPassword">Senha (mín 6 caracteres)</label>
-      <input id="signupPassword" type="password" minlength="6" required>
+      <input id="signupPassword" type="password" autocomplete="new-password" minlength="6" required>
+      <div id="signupPasswordError" class="field-error" aria-live="polite"></div>
+
       <div id="signupError" class="errors" role="alert"></div>
+      <div id="signupSuccess" class="success" role="status"></div>
+
       <button class="btn" type="submit" id="signupSubmit">Criar conta</button>
       <div class="small">Já tem conta? <span id="openLogin" class="link">Entrar</span></div>
     </form>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const SUPABASE_URL = 'https://xqsuvwagygwkkugjqgpu.supabase.co';
       const SUPABASE_KEY = 'sb_publishable__lu67DW_OZJ_kbIw_aY3-Q_AI-DQvH1';
-      if (!window.supabaseClient) window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+      if (!window.supabaseClient) {
+        window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      }
       const supabase = window.supabaseClient;
 
+      // Elements
       const tabLogin = document.getElementById('tabLogin');
       const tabSignup = document.getElementById('tabSignup');
       const loginForm = document.getElementById('loginForm');
       const signupForm = document.getElementById('signupForm');
       const openSignup = document.getElementById('openSignup');
       const openLogin = document.getElementById('openLogin');
+      const globalMsg = document.getElementById('globalMsg');
+
+      // Field error nodes
+      const loginEmailError = document.getElementById('loginEmailError');
+      const loginPasswordError = document.getElementById('loginPasswordError');
       const loginError = document.getElementById('loginError');
-      const signupError = document.getElementById('signupError');
+      const loginSuccess = document.getElementById('loginSuccess');
       const loginSubmit = document.getElementById('loginSubmit');
+
+      const signupNomeError = document.getElementById('signupNomeError');
+      const signupNascimentoError = document.getElementById('signupNascimentoError');
+      const signupEmailError = document.getElementById('signupEmailError');
+      const signupPasswordError = document.getElementById('signupPasswordError');
+      const signupError = document.getElementById('signupError');
+      const signupSuccess = document.getElementById('signupSuccess');
       const signupSubmit = document.getElementById('signupSubmit');
 
+      function clearFieldErrors() {
+        [loginEmailError, loginPasswordError,
+         signupNomeError, signupNascimentoError, signupEmailError, signupPasswordError].forEach(el => {
+          if (el) { el.style.display = 'none'; el.textContent = ''; }
+        });
+        [loginError, signupError, loginSuccess, signupSuccess, globalMsg].forEach(el => {
+          if (el) { el.style.display = 'none'; el.textContent = ''; }
+        });
+      }
+
+      function showGlobalMessage(text, type='error') {
+        globalMsg.style.display = 'block';
+        globalMsg.textContent = text;
+        globalMsg.style.color = (type === 'error') ? '#ffb4b4' : '#b6ffd9';
+      }
+
+      function validateEmail(email) {
+        if (!email) return 'Informe um email';
+        // simples verificação
+        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!re.test(email)) return 'E-mail inválido';
+        return null;
+      }
+
+      function validatePassword(password) {
+        if (!password) return 'Informe uma senha';
+        if (password.length < 6) return 'A senha deve ter ao menos 6 caracteres';
+        return null;
+      }
+
+      // Tab handlers
       function showLogin() {
         tabLogin.classList.add('active');
         tabSignup.classList.remove('active');
         loginForm.style.display = '';
         signupForm.style.display = 'none';
-        loginError.style.display = 'none';
-        signupError.style.display = 'none';
+        clearFieldErrors();
       }
       function showSignup() {
         tabSignup.classList.add('active');
         tabLogin.classList.remove('active');
         loginForm.style.display = 'none';
         signupForm.style.display = '';
-        loginError.style.display = 'none';
-        signupError.style.display = 'none';
+        clearFieldErrors();
       }
 
       tabLogin.addEventListener('click', showLogin);
       tabSignup.addEventListener('click', showSignup);
-      tabLogin.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' ') showLogin(); });
-      tabSignup.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' ') showSignup(); });
-
       openSignup.addEventListener('click', (e) => { e.preventDefault(); showSignup(); });
       openLogin.addEventListener('click', (e) => { e.preventDefault(); showLogin(); });
 
-      // Se a URL tem #signup (ou ?tab=signup), abre a aba de cadastro automaticamente
+      // Open signup if URL has #signup
       const params = new URLSearchParams(location.search);
       if (location.hash === '#signup' || params.get('tab') === 'signup') {
         showSignup();
       }
 
-      // Função utilitária para redirecionar ao índice de forma segura (usa index.html)
+      // Utility: redirect safe to index.html
       function redirectHome() {
-        // Redireciona para index.html — funciona em servidor e em arquivo local
         window.location.href = 'index.html';
       }
 
-      // LOGIN handler
+      // LOGIN submit
       loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        loginError.style.display = 'none';
+        clearFieldErrors();
+
         const email = document.getElementById('loginEmail').value.trim();
         const password = document.getElementById('loginPassword').value;
+
+        // client validation
+        let hasError = false;
+        const emailErr = validateEmail(email);
+        if (emailErr) { loginEmailError.style.display='block'; loginEmailError.textContent = emailErr; hasError = true; }
+        const passErr = validatePassword(password);
+        if (passErr) { loginPasswordError.style.display='block'; loginPasswordError.textContent = passErr; hasError = true; }
+
+        if (hasError) {
+          showGlobalMessage('Corrija os campos destacados e tente novamente.', 'error');
+          return;
+        }
+
+        // UI
         loginSubmit.disabled = true;
         loginSubmit.textContent = 'Entrando...';
+        loginError.style.display = 'none';
+        loginSuccess.style.display = 'none';
+
         try {
-          const { data, error } = await supabase.auth.signInWithPassword({email,password});
+          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
           if (error) {
-            loginError.textContent = error.message || 'Erro ao logar';
-            loginError.style.display = '';
+            // display server-side message to user
+            loginError.style.display = 'block';
+            loginError.textContent = error.message || 'Erro ao autenticar';
+            showGlobalMessage(error.message || 'Erro ao autenticar', 'error');
             loginSubmit.disabled = false;
             loginSubmit.textContent = 'Entrar';
             return;
           }
-          const user = data.user;
-          if (user) {
-            await supabase.from('profiles').upsert([{ id: user.id, last_active: new Date().toISOString() }], { onConflict: 'id' });
-            // redirect to explicit index
-            redirectHome();
-          } else {
-            alert('Verifique seu email para confirmar a conta. Depois faça login.');
-            redirectHome();
+
+          // success: update profile last_active (safe upsert without role)
+          try {
+            if (data?.user?.id) {
+              await supabase.from('profiles').upsert([{
+                id: data.user.id,
+                last_active: new Date().toISOString()
+              }], { onConflict: 'id' });
+            }
+          } catch (upErr) {
+            // se falhar, mostra aviso mas não bloqueia login
+            loginSuccess.style.display = 'block';
+            loginSuccess.textContent = 'Autenticado, mas falha ao atualizar perfil (verifique configurações).';
+            showGlobalMessage('Autenticado, porém falha ao atualizar perfil.', 'error');
+            // redirect mesmo assim
+            setTimeout(() => redirectHome(), 1200);
+            return;
           }
+
+          loginSuccess.style.display = 'block';
+          loginSuccess.textContent = 'Login realizado. Redirecionando...';
+          showGlobalMessage('Login realizado com sucesso.', 'success');
+
+          // redirect
+          setTimeout(() => redirectHome(), 700);
         } catch (err) {
-          console.error(err);
-          loginError.textContent = 'Erro inesperado';
-          loginError.style.display = '';
+          // unexpected error
+          loginError.style.display = 'block';
+          loginError.textContent = 'Erro inesperado. Tente novamente.';
+          showGlobalMessage('Erro inesperado. Veja detalhes no console (se houver).', 'error');
           loginSubmit.disabled = false;
           loginSubmit.textContent = 'Entrar';
         }
       });
 
-      // SIGNUP handler
+      // SIGNUP submit
       signupForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        signupError.style.display = 'none';
+        clearFieldErrors();
+
         const nome = document.getElementById('signupNome').value.trim();
         const dataNascimento = document.getElementById('signupNascimento').value;
         const email = document.getElementById('signupEmail').value.trim();
         const password = document.getElementById('signupPassword').value;
+
+        // client validation
+        let hasError = false;
+        if (!nome) { signupNomeError.style.display='block'; signupNomeError.textContent = 'Informe seu nome'; hasError = true; }
+        if (!dataNascimento) { signupNascimentoError.style.display='block'; signupNascimentoError.textContent = 'Informe data de nascimento'; hasError = true; }
+
+        const emailErr = validateEmail(email);
+        if (emailErr) { signupEmailError.style.display='block'; signupEmailError.textContent = emailErr; hasError = true; }
+        const passErr = validatePassword(password);
+        if (passErr) { signupPasswordError.style.display='block'; signupPasswordError.textContent = passErr; hasError = true; }
+
+        if (hasError) {
+          showGlobalMessage('Corrija os campos destacados e tente novamente.', 'error');
+          return;
+        }
+
         signupSubmit.disabled = true;
         signupSubmit.textContent = 'Criando...';
+        signupError.style.display = 'none';
+        signupSuccess.style.display = 'none';
+
         try {
-          const { data: signData, error: signErr } = await supabase.auth.signUp({ email, password });
-          if (signErr) {
-            signupError.textContent = signErr.message || 'Erro ao cadastrar';
-            signupError.style.display = '';
+          // call supabase signup (only email + password)
+          const { data, error } = await supabase.auth.signUp({ email: email, password });
+
+          if (error) {
+            // show server error message
+            signupError.style.display = 'block';
+            signupError.textContent = error.message || 'Erro ao criar conta';
+            showGlobalMessage(error.message || 'Erro ao criar conta', 'error');
             signupSubmit.disabled = false;
             signupSubmit.textContent = 'Criar conta';
             return;
           }
-          const user = signData.user;
-          if (user) {
-            const { error: pErr } = await supabase.from('profiles').insert([{ id: user.id, nome, data_nascimento: dataNascimento, role: 'user', last_active: new Date().toISOString() }]);
-            if (pErr) {
-              console.error(pErr);
-              signupError.textContent = 'Erro ao criar perfil (veja console)';
-              signupError.style.display = '';
-              signupSubmit.disabled = false;
-              signupSubmit.textContent = 'Criar conta';
+
+          // If user created immediately (rare if email confirmation off), try to upsert profile
+          if (data?.user?.id) {
+            try {
+              await supabase.from('profiles').upsert([{
+                id: data.user.id,
+                nome: nome || null,
+                data_nascimento: dataNascimento || null,
+                last_active: new Date().toISOString()
+              }], { onConflict: 'id' });
+            } catch (upErr) {
+              // upsert fail: show message but do not expose internals
+              signupSuccess.style.display = 'block';
+              signupSuccess.textContent = 'Conta criada — verifique seu e-mail. (Falha ao criar profile autom.)';
+              showGlobalMessage('Conta criada. Verifique seu e-mail para confirmar. (profile não criado automaticamente)', 'success');
+              setTimeout(() => redirectHome(), 1500);
               return;
             }
-            // redirect explicitly
-            redirectHome();
+
+            // profile created successfully
+            signupSuccess.style.display = 'block';
+            signupSuccess.textContent = 'Conta criada com sucesso! Redirecionando...';
+            showGlobalMessage('Conta criada. Verifique seu e-mail para confirmar antes de entrar.', 'success');
+            setTimeout(() => redirectHome(), 1000);
             return;
           }
-          alert('Conta criada! Verifique seu e-mail para confirmar antes de entrar.');
-          redirectHome();
+
+          // If data.user is null (email confirmation flow), inform the user
+          signupSuccess.style.display = 'block';
+          signupSuccess.textContent = 'Conta registrada — verifique seu e-mail para confirmar.';
+          showGlobalMessage('Conta criada. Verifique seu e-mail para confirmar antes de entrar.', 'success');
+          signupSubmit.disabled = false;
+          signupSubmit.textContent = 'Criar conta';
         } catch (err) {
-          console.error(err);
-          signupError.textContent = 'Erro inesperado';
-          signupError.style.display = '';
+          signupError.style.display = 'block';
+          signupError.textContent = 'Erro inesperado. Tente novamente.';
+          showGlobalMessage('Erro inesperado ao criar conta.', 'error');
           signupSubmit.disabled = false;
           signupSubmit.textContent = 'Criar conta';
         }
