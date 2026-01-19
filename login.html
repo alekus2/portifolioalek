@@ -212,6 +212,21 @@
             return;
           }
 
+          // tenta criar o profile imediatamente, usando email como chave (comportamento similar ao newsletter)
+          try {
+            // se o signUp já retornou user, inclua id; caso contrário, insira apenas por email
+            const user = data?.user ?? null;
+            const profileObj = user
+              ? { id: user.id, email, nome, data_nascimento: dataNascimento, role: 'user' }
+              : { email, nome, data_nascimento: dataNascimento, role: 'user' };
+            // upsert por email (ou id quando presente)
+            await supabase
+              .from('profiles')
+              .upsert([profileObj], { onConflict: user ? 'id' : 'email' });
+          } catch (insertErr) {
+            console.warn('Falha ao inserir/atualizar profile imediatamente:', insertErr);
+          }
+
           // se o signUp já retornou user (sem confirmar email), cria o profile com id = user.id
           const user = data?.user ?? null;
           if (user) {
