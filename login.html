@@ -83,9 +83,20 @@
   if (!window.supabaseClient) {
     if (!window.supabase || !window.supabase.createClient) {
       console.error('Supabase SDK não carregado. Verifique o CDN.');
-      throw new Error('Supabase SDK not loaded');
+      // Não lançar erro aqui para não interromper a execução da página
+      // (isso fazia com que os handlers de UI não fossem registrados).
+      // Fornecemos um stub mínimo que retorna erros informativos ao ser usado.
+      window.supabaseClient = {
+        auth: {
+          onAuthStateChange: () => ({ data: null }),
+          signUp: async () => ({ data: null, error: { message: 'Supabase SDK não inicializado', status: 500 } }),
+          signInWithPassword: async () => ({ data: null, error: { message: 'Supabase SDK não inicializado', status: 500 } })
+        },
+        from: () => ({ insert: async () => ({ data: null, error: { message: 'Supabase SDK não inicializado' } }), upsert: async () => ({ data: null, error: { message: 'Supabase SDK não inicializado' } }), update: async () => ({ data: null, error: { message: 'Supabase SDK não inicializado' } }), select: async () => ({ data: null, error: { message: 'Supabase SDK não inicializado' } }) })
+      };
+    } else {
+      window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     }
-    window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   }
   const supabase = window.supabaseClient;
 
