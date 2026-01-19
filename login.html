@@ -71,13 +71,15 @@
     </form>
   </div>
 
+  <!-- CDN Supabase v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      // Supabase config (mantive sua URL/key pub)
+      // === CONFIG (substitua apenas estes valores) ===
       const SUPABASE_URL = 'https://atjeaedbncwcgkwfnrmr.supabase.co';
       const SUPABASE_KEY = 'sb_publishable_lXnKm0nBA8HC-6clDXTAYw_f8-xXiNe';
+      // cria client global (evita criar múltiplas instâncias)
       if (!window.supabaseClient) window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       const supabase = window.supabaseClient;
 
@@ -124,12 +126,29 @@
       openSignup.addEventListener('click', (e) => { e.preventDefault(); signupForm.style.display=''; loginForm.style.display='none'; clearSignErrors(); });
       openLogin?.addEventListener('click', (e) => { e.preventDefault(); signupForm.style.display='none'; loginForm.style.display=''; clearLoginErrors(); });
 
+      // Auth-state listener: cria profile quando o usuário aparece (ex: após confirmar e-mail e login)
+      const { data: authSub } = supabase.auth.onAuthStateChange(async (event, session) => {
+        try {
+          if (session?.user) {
+            const user = session.user;
+            // tenta garantir que exista profile com id = user.id (upsert)
+            await supabase
+              .from('profiles')
+              .upsert([{ id: user.id, email: user.email, role: 'user' }], { onConflict: 'id' });
+            // opcional: atualizar last_active
+            await supabase
+              .from('profiles')
+              .update({ last_active: new Date().toISOString() })
+              .eq('id', user.id);
+            console.log('Profile garantido via auth listener para', user.id);
+          }
+        } catch (err) {
+          console.warn('Erro no auth listener ao garantir profile:', err);
+        }
+      });
+
       /* ====================
-         SIGNUP FLOW (ajustado)
-         1) cria profile pendente (sem auth_id) via INSERT (anon permitted by policy)
-         2) chama supabase.auth.signUp({email,password})
-         3) se signUp retornar user.id -> atualiza profiles set auth_id = user.id
-            caso necessário trigger no DB fará o link quando o user efetivamente for criado (confirm e-mail)
+         SIGNUP FLOW (corrigido - cria profile SOMENTE após signUp retornar user)
       ==================== */
       signupForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -154,40 +173,11 @@
           return;
         }
 
-        // 1) cria profile pendente (sem auth_id). Usamos upsert para evitar duplos inserts por reload.
         signupSubmit.disabled = true;
         signupSubmit.textContent = 'Criando...';
+
         try {
-          const profileRow = {
-            email,
-            nome,
-            data_nascimento: dataNascimento,
-            role: 'user'
-          };
-
-          // upsert by email (anon allowed per policy)
-          const { error: upsertErr } = await supabase
-            .from('profiles')
-            .upsert([profileRow], { onConflict: 'email' });
-
-          if (upsertErr) {
-            // se RLS bloquear, exibe ao usuário e aborta
-            signupError.style.display='block';
-            signupError.textContent = upsertErr.message || 'Erro ao salvar perfil (RLS?)';
-            signupSubmit.disabled = false;
-            signupSubmit.textContent = 'Criar conta';
-            return;
-          }
-        } catch (err) {
-          signupError.style.display='block';
-          signupError.textContent = 'Erro ao salvar pré-perfil. Tente novamente.';
-          signupSubmit.disabled = false;
-          signupSubmit.textContent = 'Criar conta';
-          return;
-        }
-
-        // 2) chama signUp
-        try {
+          // 1) chama signUp primeiro
           const { data, error } = await supabase.auth.signUp({ email, password });
 
           if (error) {
@@ -198,16 +188,16 @@
             return;
           }
 
-          // 3) se retornou user (fluxo sem confirmação de email), vinculamos o profile
-          if (data?.user?.id) {
+          // se o signUp já retornou user (sem confirmar email), cria o profile com id = user.id
+          const user = data?.user ?? null;
+          if (user) {
             try {
-              await supabase.from('profiles').update({ auth_id: data.user.id }).eq('email', email);
-            } catch (linkErr) {
-              // falha para linkar não bloqueia o usuário, mas avisa
-              signupSuccess.style.display='block';
-              signupSuccess.textContent = 'Conta criada — verifique seu e-mail. (Falha ao vincular profile automaticamente)';
-              setTimeout(() => window.location.href = 'index.html', 1200);
-              return;
+              await supabase
+                .from('profiles')
+                .upsert([{ id: user.id, email, nome, data_nascimento: dataNascimento, role: 'user' }], { onConflict: 'id' });
+            } catch (upErr) {
+              // não bloqueamos o usuário, apenas informamos
+              console.warn('Falha ao criar profile imediatamente:', upErr);
             }
             signupSuccess.style.display='block';
             signupSuccess.textContent = 'Conta criada com sucesso! Redirecionando...';
@@ -215,7 +205,7 @@
             return;
           }
 
-          // fluxo com confirmação: informamos ao usuário que precisa confirmar e-mail
+          // se chegou aqui: confirmação por e-mail necessária. O listener de auth criará o profile quando o usuário confirmar e fizer login.
           signupSuccess.style.display='block';
           signupSuccess.textContent = 'Conta registrada — verifique seu e-mail para confirmar.';
           signupSubmit.disabled = false;
@@ -225,13 +215,14 @@
           signupError.textContent = 'Erro inesperado ao criar conta.';
           signupSubmit.disabled = false;
           signupSubmit.textContent = 'Criar conta';
+          console.error(err);
         }
       });
 
       /* ====================
-         LOGIN FLOW
-         - autentica
-         - vincula profile caso exista profile pendente (email) e auth_id ainda nulo
+         LOGIN FLOW (corrigido)
+         - autentica com signInWithPassword
+         - garante profile via upsert com id = user.id (compatível com RLS)
          - atualiza last_active
       ==================== */
       loginForm.addEventListener('submit', async (e) => {
@@ -264,19 +255,27 @@
             return;
           }
 
-          const userId = data?.user?.id;
-          // Tenta vincular profile pendente (caso o trigger não tenha feito)
+          const user = data?.user ?? null;
+          if (!user) {
+            loginError.style.display='block';
+            loginError.textContent = 'Falha no login: usuário não retornado.';
+            loginSubmit.disabled = false;
+            loginSubmit.textContent = 'Entrar';
+            return;
+          }
+
+          // garante profile com id = user.id (upsert). Isso funcionará pois o cliente já está autenticado.
           try {
-            if (userId) {
-              // atualiza profile: set auth_id where email = user.email and auth_id is null
-              await supabase.from('profiles').update({ auth_id: userId, last_active: new Date().toISOString() }).eq('email', email).is('auth_id', null);
-            } else {
-              // se data.user for null (raro), apenas tenta atualizar por email
-              await supabase.from('profiles').update({ last_active: new Date().toISOString() }).eq('email', email);
-            }
+            await supabase
+              .from('profiles')
+              .upsert([{ id: user.id, email: user.email, role: 'user' }], { onConflict: 'id' });
+
+            await supabase
+              .from('profiles')
+              .update({ last_active: new Date().toISOString() })
+              .eq('id', user.id);
           } catch (pErr) {
-            // não bloqueia login, apenas mostra aviso
-            console.warn('Falha ao vincular/atualizar profile:', pErr);
+            console.warn('Falha ao garantir/atualizar profile após login:', pErr);
           }
 
           loginSuccess.style.display='block';
@@ -287,6 +286,7 @@
           loginError.textContent = 'Erro inesperado no login.';
           loginSubmit.disabled = false;
           loginSubmit.textContent = 'Entrar';
+          console.error(err);
         }
       });
 
