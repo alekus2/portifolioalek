@@ -132,9 +132,24 @@
           if (session?.user) {
             const user = session.user;
             // tenta garantir que exista profile com id = user.id (upsert)
-            await supabase
-              .from('profiles')
-              .upsert([{ id: user.id, email: user.email, role: 'user' }], { onConflict: 'id' });
+            try {
+              // tenta aplicar dados pendentes salvos no signup (nome, data_nascimento)
+              const key = 'pendingProfile_' + ((user.email || '').toLowerCase());
+              const stored = localStorage.getItem(key);
+              const pending = stored ? JSON.parse(stored) : null;
+              const upsertObj = {
+                id: user.id,
+                email: user.email,
+                role: 'user',
+                ...(pending ? { nome: pending.nome, data_nascimento: pending.data_nascimento } : {})
+              };
+              await supabase
+                .from('profiles')
+                .upsert([upsertObj], { onConflict: 'id' });
+              if (pending) localStorage.removeItem(key);
+            } catch (innerErr) {
+              console.warn('Erro ao aplicar pending profile via auth listener:', innerErr);
+            }
             // opcional: atualizar last_active
             await supabase
               .from('profiles')
@@ -176,11 +191,20 @@
         signupSubmit.disabled = true;
         signupSubmit.textContent = 'Criando...';
 
+        // salva dados pendentes para serem aplicados quando o usuário confirmar e fizer login
+        try {
+          localStorage.setItem('pendingProfile_' + email, JSON.stringify({ nome, data_nascimento: dataNascimento, email }));
+        } catch (e) {
+          console.warn('Não foi possível salvar pendingProfile localmente', e);
+        }
+
         try {
           // 1) chama signUp primeiro
           const { data, error } = await supabase.auth.signUp({ email, password });
 
           if (error) {
+            // remove pending se falhou no signUp
+            try { localStorage.removeItem('pendingProfile_' + email); } catch(_) {}
             signupError.style.display='block';
             signupError.textContent = error.message || 'Erro ao criar conta';
             signupSubmit.disabled = false;
@@ -195,6 +219,8 @@
               await supabase
                 .from('profiles')
                 .upsert([{ id: user.id, email, nome, data_nascimento: dataNascimento, role: 'user' }], { onConflict: 'id' });
+              // remove pending se já criamos imediatamente
+              try { localStorage.removeItem('pendingProfile_' + email); } catch(_) {}
             } catch (upErr) {
               // não bloqueamos o usuário, apenas informamos
               console.warn('Falha ao criar profile imediatamente:', upErr);
@@ -211,6 +237,8 @@
           signupSubmit.disabled = false;
           signupSubmit.textContent = 'Criar conta';
         } catch (err) {
+          // remove pending em caso de erro inesperado
+          try { localStorage.removeItem('pendingProfile_' + email); } catch(_) {}
           signupError.style.display='block';
           signupError.textContent = 'Erro inesperado ao criar conta.';
           signupSubmit.disabled = false;
@@ -219,12 +247,7 @@
         }
       });
 
-      /* ====================
-         LOGIN FLOW (corrigido)
-         - autentica com signInWithPassword
-         - garante profile via upsert com id = user.id (compatível com RLS)
-         - atualiza last_active
-      ==================== */
+
       loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         clearLoginErrors();
@@ -264,7 +287,6 @@
             return;
           }
 
-          // garante profile com id = user.id (upsert). Isso funcionará pois o cliente já está autenticado.
           try {
             await supabase
               .from('profiles')
